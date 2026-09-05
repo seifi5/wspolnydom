@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { CheckCircle, Clock, Copy, Plus, Star } from 'lucide-react'
+import { CheckCircle, Clock, Copy, Plus, Star, Trash2, AlertCircle } from 'lucide-react'
 
 export default function App() {
   const [pin, setPin] = useState('')
@@ -11,6 +11,8 @@ export default function App() {
   const [teens, setTeens] = useState([])
   const [stats, setStats] = useState(null)
   const [tasks, setTasks] = useState([])
+  const [allTeensStats, setAllTeensStats] = useState([])
+  const [allTasksAdmin, setAllTasksAdmin] = useState([])
   const [bounties, setBounties] = useState([])
   
   // Formularze
@@ -44,11 +46,15 @@ export default function App() {
         .order('due_date', { ascending: true })
       setTasks(tasksData || [])
     } else {
-      const { data: tasksData } = await supabase.from('monthly_tasks')
+      // Pobranie statystyk wszystkich nastolatków dla panelu rodzica
+      const { data: allStats } = await supabase.from('current_month_stats').select('*')
+      setAllTeensStats(allStats || [])
+
+      // Pobranie wszystkich zadań do podglądu administracyjnego
+      const { data: adminTasks } = await supabase.from('monthly_tasks')
         .select('*, profiles(name)')
-        .eq('status', 'waiting_approval')
         .order('due_date', { ascending: false })
-      setTasks(tasksData || [])
+      setAllTasksAdmin(adminTasks || [])
     }
 
     const { data: bountiesData } = await supabase.from('bounty_tasks').select('*').eq('status', 'open')
@@ -59,13 +65,13 @@ export default function App() {
 
   const addTask = async (e) => {
     e.preventDefault()
-    // Jeśli start_date jest puste, zapisujemy jako null
     const payload = {
       ...newTask,
       start_date: newTask.start_date ? newTask.start_date : null
     }
     await supabase.from('monthly_tasks').insert([payload])
     setNewTask({ title: '', weight: 1, assignee_id: teens[0]?.id || '', start_date: '', due_date: '' })
+    fetchData(user)
     alert('Zadanie dodane')
   }
 
@@ -78,6 +84,12 @@ export default function App() {
 
   const approveTask = async (taskId) => {
     await supabase.from('monthly_tasks').update({ status: 'approved' }).eq('id', taskId)
+    fetchData(user)
+  }
+
+  const deleteTaskAdmin = async (taskId) => {
+    if (!window.confirm('Czy na pewno chcesz usunąć to zadanie?')) return
+    await supabase.from('monthly_tasks').delete().eq('id', taskId)
     fetchData(user)
   }
 
@@ -120,6 +132,7 @@ export default function App() {
     })
 
     await supabase.from('monthly_tasks').insert(newTasks)
+    fetchData(user)
     alert(`Skopiowano ${newTasks.length} zadań na kolejny miesiąc.`)
   }
 
@@ -166,6 +179,8 @@ export default function App() {
   }
 
   if (user.role === 'parent') {
+    const waitingTasks = allTasksAdmin.filter(t => t.status === 'waiting_approval')
+
     return (
       <div className="p-4 max-w-md mx-auto pb-20">
         <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -173,16 +188,30 @@ export default function App() {
           <button onClick={() => setUser(null)} className="text-sm text-gray-500 border px-3 py-1 rounded">Wyloguj</button>
         </div>
 
-        {/* Sekcja: Akceptacje */}
-        <section className="mb-8">
-          <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><CheckCircle size={18}/> Do akceptacji</h2>
-          {tasks.length === 0 ? <p className="text-sm text-gray-400">Brak zadań oczekujących na sprawdzenie.</p> : null}
+        {/* Sekcja: Stan miesięczny Miki & Pola */}
+        <section className="mb-6">
+          <h2 className="font-bold text-gray-700 mb-3 text-sm uppercase tracking-wide">Stan planu miesięcznego</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {allTeensStats.map(stat => (
+              <div key={stat.teen_id} className="bg-white p-3 rounded shadow-sm border">
+                <p className="font-bold text-gray-800">{stat.name}</p>
+                <div className="text-2xl font-bold mt-1 text-blue-600">{stat.success_rate}%</div>
+                <p className="text-xs text-gray-400 mt-1">Punkty: {stat.earned_points} / {stat.max_points_to_date}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Sekcja: Do akceptacji */}
+        <section className="mb-6">
+          <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><CheckCircle size={18}/> Do akceptacji ({waitingTasks.length})</h2>
+          {waitingTasks.length === 0 ? <p className="text-xs text-gray-400">Brak zadań oczekujących na sprawdzenie.</p> : null}
           <div className="flex flex-col gap-2">
-            {tasks.map(t => (
+            {waitingTasks.map(t => (
               <div key={t.id} className="bg-white p-3 rounded shadow-sm border-l-4 border-yellow-400 flex justify-between items-center">
                 <div>
                   <p className="font-bold text-sm">{t.title}</p>
-                  <p className="text-xs text-gray-500">Wykonał(a): {t.profiles.name}</p>
+                  <p className="text-xs text-gray-500">Wykonał(a): {t.profiles.name} ({t.weight} pkt)</p>
                 </div>
                 <button onClick={() => approveTask(t.id)} className="bg-green-500 text-white px-3 py-1 rounded text-sm font-bold">
                   Zatwierdź
@@ -192,8 +221,47 @@ export default function App() {
           </div>
         </section>
 
+        {/* Sekcja: Pełna lista zadań ze statusem */}
+        <section className="mb-6 bg-white p-4 rounded shadow-sm">
+          <h2 className="font-bold text-gray-700 mb-3">Wszystkie zadania w miesiącu</h2>
+          <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+            {allTasksAdmin.map(t => {
+              const statusColors = {
+                pending: 'bg-blue-50 text-blue-700 border-blue-200',
+                waiting_approval: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                approved: 'bg-green-50 text-green-700 border-green-200',
+                failed: 'bg-red-50 text-red-700 border-red-200',
+                excused: 'bg-gray-50 text-gray-700 border-gray-200'
+              }
+              const statusNames = {
+                pending: 'Oczekujące',
+                waiting_approval: 'Do akceptacji',
+                approved: 'Zatwierdzone',
+                failed: 'Niewykonane',
+                excused: 'Zwolniony'
+              }
+              return (
+                <div key={t.id} className="p-2 border rounded text-xs flex justify-between items-center">
+                  <div>
+                    <span className="font-bold">{t.title}</span> <span className="text-gray-400">({t.profiles?.name})</span>
+                    <div className="text-gray-500 mt-0.5">Termin: {new Date(t.due_date).toLocaleString('pl-PL', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded border text-[10px] font-bold ${statusColors[t.status]}`}>
+                      {statusNames[t.status]}
+                    </span>
+                    <button onClick={() => deleteTaskAdmin(t.id)} className="text-red-400 hover:text-red-600">
+                      <Trash2 size={14}/>
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
         {/* Sekcja: Dodawanie zadań */}
-        <section className="mb-8 bg-white p-4 rounded shadow-sm">
+        <section className="mb-6 bg-white p-4 rounded shadow-sm">
           <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><Plus size={18}/> Zaplanuj zadanie (100%)</h2>
           <form onSubmit={addTask} className="flex flex-col gap-3">
             <input required placeholder="Nazwa np. Spacer z psem" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} className="border p-2 rounded text-sm"/>
