@@ -1,0 +1,15 @@
+{
+  "name": "Wspólny Dom",
+  "short_name": "Wspólny Dom",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/vitejs/vite/main/docs/images/vite.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
