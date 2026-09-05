@@ -33,9 +33,10 @@ export default function App() {
   // Filtry i Zakładki
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
-  const [parentTab, setParentTab] = useState('dashboard') // dashboard | tasks | archive
-  const [teenTab, setTeenTab] = useState('active') // active | bounty | wallet | archive
-  const [expandedMonth, setExpandedMonth] = useState(null) // Do rozwijania historii
+  const [teenFilterStatus, setTeenFilterStatus] = useState('all') // Filtr statusów dla nastolatka
+  const [parentTab, setParentTab] = useState('dashboard') 
+  const [teenTab, setTeenTab] = useState('active') 
+  const [expandedMonth, setExpandedMonth] = useState(null) 
 
   const [toastMessage, setToastMessage] = useState('')
 
@@ -48,7 +49,6 @@ export default function App() {
   const currentMonthName = now.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }).toUpperCase()
   const startOfThisMonth = new Date(year, month, 1).toISOString()
 
-  // Separacja zadań na obecny miesiąc i historię
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
 
@@ -76,7 +76,15 @@ export default function App() {
     return `Od: ${start.toLocaleString('pl-PL', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })} Do: ${dueFormatted}`;
   }
 
-  // Grupowanie historii
+  const formatFutureTime = (dateStr) => {
+    const d = new Date(dateStr);
+    const today = new Date();
+    if (d.getDate() === today.getDate() && d.getMonth() === today.getMonth()) {
+        return `dzisiaj o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return `${d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit' })} o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+
   const groupTasksByMonth = (tasksToGroup) => {
     const groups = {}
     tasksToGroup.forEach(t => {
@@ -85,17 +93,22 @@ export default function App() {
       if (!groups[key]) groups[key] = { label: d.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }), tasks: [] }
       groups[key].tasks.push(t)
     })
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])) // Sort malejąco (najnowsze pierwsze)
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])) 
   }
 
-  // Obliczanie statystyk (używane do current i history)
+  // --- POPRAWIONA KALKULACJA STATYSTYK ---
   const calculateStats = (teenId, taskList, teenProfile) => {
     const teenTasks = taskList.filter(t => t.assignee_id === teenId)
     const baseTasks = teenTasks.filter(t => t.reward === 0)
     const extraTasks = teenTasks.filter(t => t.reward > 0 && t.status === 'approved')
 
-    const maxPoints = baseTasks.reduce((s, t) => s + t.weight, 0)
-    const earnedPoints = baseTasks.filter(t => t.status === 'approved').reduce((s, t) => s + t.weight, 0)
+    // Bierzemy pod uwagę tylko zadania, które mają status inny niż pending LUB ich data końcowa minęła
+    const currentTime = new Date()
+    const evaluatedBaseTasks = baseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) < currentTime)
+
+    const maxPoints = evaluatedBaseTasks.reduce((s, t) => s + t.weight, 0)
+    const earnedPoints = evaluatedBaseTasks.filter(t => t.status === 'approved').reduce((s, t) => s + t.weight, 0)
+    
     const successRate = maxPoints === 0 ? 100 : Math.round((earnedPoints / maxPoints) * 100)
     
     const baseAllowance = teenProfile?.base_allowance || 0
@@ -109,7 +122,6 @@ export default function App() {
     return { successRate, maxPoints, earnedPoints, currentBaseEarned, hasBonus, bonusAllowance, extraEarned, totalPayout }
   }
 
-  // Komponent Statusu
   const StatusBadge = ({ status }) => {
     const styles = {
       pending: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
@@ -146,7 +158,6 @@ export default function App() {
   }
 
   const fetchTasks = async () => {
-    // Pobieramy wszystko, limit 1000 żeby obsłużyć cały rok. 
     const { data } = await supabase.from('monthly_tasks').select('*, profiles(name)').order('due_date', { ascending: true }).limit(1000)
     if (data) setAllTasks(data)
   }
@@ -245,6 +256,12 @@ export default function App() {
     fetchTeens()
   }
 
+  const handleStatsClick = () => {
+    setTeenTab('active');
+    setTeenFilterStatus('evaluated');
+    showToast('Widzisz zadania wpływające na % wynagrodzenia');
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col items-center justify-center p-4">
@@ -260,7 +277,6 @@ export default function App() {
     )
   }
 
-  // Komponent generujący kartę widoku historii (używany przez rodzica i dziecko)
   const HistoryCard = ({ monthKey, data, isParent }) => {
     const isExpanded = expandedMonth === monthKey
     return (
@@ -362,9 +378,8 @@ export default function App() {
 
       <div className="p-4 max-w-md mx-auto">
         {user.role === 'parent' ? (
-          // --- WIDOK RODZICA ---
+          // --- WIDOK RODZICA (BEZ ZMIAN) ---
           <>
-            {/* Nawigacja Rodzica */}
             <div className="flex bg-white/5 p-1 rounded-xl mb-6 border border-white/10">
               <button onClick={() => setParentTab('dashboard')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${parentTab === 'dashboard' ? 'bg-cyan-500/20 text-cyan-400 shadow-lg' : 'text-gray-400'}`}>Pulpit</button>
               <button onClick={() => setParentTab('tasks')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${parentTab === 'tasks' ? 'bg-cyan-500/20 text-cyan-400 shadow-lg' : 'text-gray-400'}`}>Planowanie</button>
@@ -573,17 +588,31 @@ export default function App() {
             {(() => {
               const stats = calculateStats(user.id, tasks, user)
               const bountyBoardTasks = tasks.filter(t => !t.assignee_id && t.status === 'pending')
-              const myCurrentTasks = tasks.filter(t => t.assignee_id === user.id)
+              
+              // Logika filtrowania zadań nastolatka
+              let displayedTeenTasks = tasks.filter(t => t.assignee_id === user.id)
+              if (teenFilterStatus === 'evaluated') {
+                 // Pokazujemy tylko te, które weszły do mianownika Skuteczności (baza + zatwierdzone/przeterminowane)
+                 displayedTeenTasks = displayedTeenTasks.filter(t => t.reward === 0 && (t.status !== 'pending' || new Date(t.due_date) < now))
+              } else if (teenFilterStatus !== 'all') {
+                 displayedTeenTasks = displayedTeenTasks.filter(t => t.status === teenFilterStatus)
+              }
 
               return (
                 <>
-                  {/* Kafel finansowy */}
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] mb-6 relative overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl"></div>
-                    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl"></div>
+                  {/* Klikalny Kafel finansowy - linkuje do zadań kształtujących ocenę */}
+                  <div 
+                    onClick={handleStatsClick}
+                    className="cursor-pointer bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] mb-6 relative overflow-hidden active:scale-[0.98] transition-transform"
+                  >
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
                     
                     <div className="relative z-10">
-                      <h2 className="text-[10px] font-bold text-cyan-300 uppercase tracking-[0.2em]">Prognoza wypłaty</h2>
+                      <div className="flex justify-between items-start">
+                        <h2 className="text-[10px] font-bold text-cyan-300 uppercase tracking-[0.2em]">Prognoza wypłaty</h2>
+                        <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-cyan-200/50">Kliknij by sprawdzić ocenę 🔍</span>
+                      </div>
                       <div className="mt-1 text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 drop-shadow-sm">
                         {stats.totalPayout.toFixed(0)} <span className="text-2xl font-bold text-cyan-400/80">zł</span>
                       </div>
@@ -660,9 +689,25 @@ export default function App() {
 
                   {teenTab === 'active' && (
                     <div className="bg-white/5 backdrop-blur-md border border-white/10 p-5 rounded-2xl shadow-xl animate-fade-in">
+                      {/* Pasek filtrów Nastolatka */}
+                      <div className="mb-4">
+                        <select 
+                          value={teenFilterStatus} 
+                          onChange={e => setTeenFilterStatus(e.target.value)} 
+                          className="w-full bg-slate-800 border border-white/10 text-white p-2.5 rounded-xl text-sm outline-none focus:ring-1 focus:ring-cyan-400"
+                        >
+                          <option value="all">Wszystkie zadania</option>
+                          <option value="evaluated">🔍 Wpływające na wynik (%)</option>
+                          <option value="pending">Do zrobienia</option>
+                          <option value="waiting_approval">Czekają na akceptację</option>
+                          <option value="approved">Zatwierdzone (Gotowe)</option>
+                          <option value="failed">Niewykonane</option>
+                        </select>
+                      </div>
+
                       <div className="flex flex-col gap-3">
-                        {myCurrentTasks.length === 0 && <p className="text-xs text-gray-400 text-center py-4">Brak zadań. Odpoczywaj! 🎉</p>}
-                        {myCurrentTasks.map(task => {
+                        {displayedTeenTasks.length === 0 && <p className="text-xs text-gray-400 text-center py-4">Brak zadań pasujących do filtra.</p>}
+                        {displayedTeenTasks.map(task => {
                           const isFuture = task.start_date ? new Date(task.start_date) > new Date() : false
                           const isBounty = task.reward > 0
 
@@ -687,7 +732,6 @@ export default function App() {
                                     {isFuture ? 'Za wcześnie' : 'ZROBIONE'}
                                   </button>
                                 )}
-                                {/* Jeśli status inny niż pending, badge statusu wyświetla się po lewej */}
                               </div>
                             </div>
                           )
