@@ -12,8 +12,12 @@ export default function App() {
   const [title, setTitle] = useState('')
   const [assigneeId, setAssigneeId] = useState('')
   const [weight, setWeight] = useState(1)
+  const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [editingTaskId, setEditingTaskId] = useState(null)
+
+  // Stany edycji budżetów nastolatków przez rodzica
+  const [budgets, setBudgets] = useState({})
 
   // Filtry w panelu rodzica
   const [filterTeen, setFilterTeen] = useState('all')
@@ -52,6 +56,16 @@ export default function App() {
     if (data) {
       setTeens(data)
       if (data.length > 0 && !assigneeId) setAssigneeId(data[0].id)
+      
+      // Inicjalizacja stanów budżetów do edycji
+      const budgetMap = {}
+      data.forEach(t => {
+        budgetMap[t.id] = {
+          base: t.base_allowance,
+          bonus: t.bonus_allowance
+        }
+      })
+      setBudgets(budgetMap)
     }
   }
 
@@ -74,14 +88,15 @@ export default function App() {
     e.preventDefault()
     if (!title || !assigneeId || !dueDate) return
 
-    const formattedDate = new Date(dueDate).toISOString()
+    const formattedDueDate = new Date(dueDate).toISOString()
+    const formattedStartDate = startDate ? new Date(startDate).toISOString() : null
 
     if (editingTaskId) {
       await supabase.from('monthly_tasks').update({
         title,
         assignee_id: assigneeId,
         weight: parseInt(weight),
-        due_date: formattedDate
+        due_date: formattedDueDate
       }).eq('id', editingTaskId)
       setEditingTaskId(null)
     } else {
@@ -89,12 +104,13 @@ export default function App() {
         title,
         assignee_id: assigneeId,
         weight: parseInt(weight),
-        due_date: formattedDate,
+        due_date: formattedDueDate,
         status: 'pending'
       }])
     }
 
     setTitle('')
+    setStartDate('')
     setDueDate('')
     setEditingTaskId(null)
     fetchTasks()
@@ -117,6 +133,28 @@ export default function App() {
       fetchTasks()
       fetchAllStats()
     }
+  }
+
+  const handleBudgetChange = (teenId, field, value) => {
+    setBudgets(prev => ({
+      ...prev,
+      [teenId]: {
+        ...prev[teenId],
+        [field]: value
+      }
+    }))
+  }
+
+  const handleSaveBudgets = async () => {
+    for (const teenId of Object.keys(budgets)) {
+      const b = budgets[teenId]
+      await supabase.from('profiles').update({
+        base_allowance: parseFloat(b.base) || 0,
+        bonus_allowance: parseFloat(b.bonus) || 0
+      }).eq('id', teenId)
+    }
+    alert('Budżety zostały zaktualizowane!')
+    fetchTeens()
   }
 
   const handleTeenAction = async (taskId, newStatus) => {
@@ -193,6 +231,41 @@ export default function App() {
           })}
         </div>
 
+        {/* Sekcja ustawień budżetu i bonusów */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+          <h2 className="font-bold text-gray-800 mb-3 text-sm">Ustawienia kieszonkowego i bonusów</h2>
+          <div className="flex flex-col gap-3">
+            {teens.map(teen => (
+              <div key={teen.id} className="bg-gray-50 p-3 rounded-lg border">
+                <p className="font-semibold text-xs text-gray-700 mb-2">{teen.name}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1">Kwota bazowa (zł):</label>
+                    <input 
+                      type="number" 
+                      value={budgets[teen.id]?.base ?? teen.base_allowance} 
+                      onChange={e => handleBudgetChange(teen.id, 'base', e.target.value)}
+                      className="border p-2 rounded text-sm w-full bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1">Bonus &gt;90% (zł):</label>
+                    <input 
+                      type="number" 
+                      value={budgets[teen.id]?.bonus ?? teen.bonus_allowance} 
+                      onChange={e => handleBudgetChange(teen.id, 'bonus', e.target.value)}
+                      className="border p-2 rounded text-sm w-full bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button onClick={handleSaveBudgets} className="bg-gray-800 text-white text-xs py-2.5 rounded-lg font-bold shadow mt-1">
+              Zapisz budżety
+            </button>
+          </div>
+        </div>
+
         {/* Sekcja do akceptacji */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
           <h2 className="font-bold text-gray-800 mb-3 flex items-center justify-between">
@@ -241,22 +314,33 @@ export default function App() {
                 <option value="3">3 pkt (Pokój)</option>
               </select>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Termin ostateczny:</label>
-              <input 
-                type="datetime-local" 
-                value={dueDate} 
-                onChange={e => setDueDate(e.target.value)} 
-                className="border p-2.5 rounded-lg text-sm w-full"
-                required
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500 block mb-1">Data początkowa (opcjonalnie):</label>
+                <input 
+                  type="datetime-local" 
+                  value={startDate} 
+                  onChange={e => setStartDate(e.target.value)} 
+                  className="border p-2.5 rounded-lg text-sm w-full"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 block mb-1">Termin ostateczny:</label>
+                <input 
+                  type="datetime-local" 
+                  value={dueDate} 
+                  onChange={e => setDueDate(e.target.value)} 
+                  className="border p-2.5 rounded-lg text-sm w-full"
+                  required
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <button type="submit" className="flex-1 bg-blue-600 text-white p-2.5 rounded-lg font-bold text-sm shadow">
                 {editingTaskId ? 'Zapisz zmiany' : 'Dodaj do planu'}
               </button>
               {editingTaskId && (
-                <button type="button" onClick={() => { setEditingTaskId(null); setTitle(''); setDueDate(''); }} className="bg-gray-200 text-gray-700 px-4 rounded-lg text-sm font-bold">
+                <button type="button" onClick={() => { setEditingTaskId(null); setTitle(''); setStartDate(''); setDueDate(''); }} className="bg-gray-200 text-gray-700 px-4 rounded-lg text-sm font-bold">
                   Anuluj
                 </button>
               )}
