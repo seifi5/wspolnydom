@@ -262,15 +262,40 @@ export default function App() {
     showToast('Widzisz zadania wpływające na % wynagrodzenia');
   }
 
-  if (!user) {
+if (!user) {
     return (
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col items-center justify-center p-4">
-        <h1 className="text-4xl font-black mb-8 tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]">
+        <h1 className="text-4xl font-black mb-10 tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]">
           WSPÓLNY DOM
         </h1>
-        <form onSubmit={handleLogin} className="flex flex-col gap-4 w-full max-w-xs bg-white/10 backdrop-blur-md border border-white/10 p-8 rounded-3xl shadow-2xl">
-          <input type="password" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN (4 cyfry)" className="bg-white/5 border border-white/20 text-white placeholder-gray-400 p-4 rounded-xl text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all" />
-          <button type="submit" className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white p-4 rounded-xl font-bold text-lg shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] active:scale-95 transition-all">WEJDŹ</button>
+        <form onSubmit={handleLogin} className="flex flex-col gap-6 w-full max-w-xs bg-white/10 backdrop-blur-md border border-white/10 p-8 rounded-3xl shadow-2xl">
+          
+          <div className="text-center">
+            <p className="text-xs text-cyan-300 font-bold tracking-widest uppercase mb-3">Wprowadź PIN</p>
+            <input 
+              type="password" 
+              inputMode="numeric" 
+              pattern="[0-9]*"
+              maxLength={4} 
+              value={pin} 
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} // Usuwa wszystko co nie jest cyfrą
+              placeholder="••••" 
+              className="w-full bg-black/30 border border-white/10 text-white placeholder-gray-600 p-4 rounded-2xl text-center text-4xl tracking-[0.5em] focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all font-mono" 
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={pin.length < 4}
+            className={`w-full p-4 rounded-xl font-bold text-lg transition-all ${
+              pin.length === 4 
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] active:scale-95' 
+                : 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
+            }`}
+          >
+            WEJDŹ
+          </button>
+
           {error && <p className="text-rose-400 text-center text-sm font-semibold">{error}</p>}
         </form>
       </div>
