@@ -252,7 +252,7 @@ export default function App() {
 
   return (
     <div className="p-4 max-w-md mx-auto pb-12 relative">
-      {/* Element Powiadomienia (Toast) */}
+    {/* Element Powiadomienia (Toast) */}
       {toastMessage && (
         <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-full shadow-2xl text-sm font-bold animate-bounce whitespace-nowrap">
           {toastMessage}
