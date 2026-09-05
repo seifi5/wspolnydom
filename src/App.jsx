@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { CheckCircle, Clock, Copy, Plus, Star, Trash2 } from 'lucide-react'
+import { CheckCircle, Clock, Copy, Plus, Star } from 'lucide-react'
 
 export default function App() {
   const [pin, setPin] = useState('')
@@ -14,7 +14,7 @@ export default function App() {
   const [bounties, setBounties] = useState([])
   
   // Formularze
-  const [newTask, setNewTask] = useState({ title: '', weight: 1, assignee_id: '', due_date: '' })
+  const [newTask, setNewTask] = useState({ title: '', weight: 1, assignee_id: '', start_date: '', due_date: '' })
   const [newBounty, setNewBounty] = useState({ title: '', reward_amount: '', expires_at: '' })
 
   const handleLogin = async (e) => {
@@ -31,7 +31,6 @@ export default function App() {
   }
 
   const fetchData = async (currentUser) => {
-    // Pobranie listy nastolatków dla rodzica
     const { data: teensData } = await supabase.from('profiles').select('*').eq('role', 'teen')
     setTeens(teensData || [])
 
@@ -45,7 +44,6 @@ export default function App() {
         .order('due_date', { ascending: true })
       setTasks(tasksData || [])
     } else {
-      // Pobranie zadań do akceptacji dla rodzica
       const { data: tasksData } = await supabase.from('monthly_tasks')
         .select('*, profiles(name)')
         .eq('status', 'waiting_approval')
@@ -53,7 +51,6 @@ export default function App() {
       setTasks(tasksData || [])
     }
 
-    // Pobranie otwartych bounties
     const { data: bountiesData } = await supabase.from('bounty_tasks').select('*').eq('status', 'open')
     setBounties(bountiesData || [])
   }
@@ -62,8 +59,13 @@ export default function App() {
 
   const addTask = async (e) => {
     e.preventDefault()
-    await supabase.from('monthly_tasks').insert([newTask])
-    setNewTask({ title: '', weight: 1, assignee_id: teens[0]?.id || '', due_date: '' })
+    // Jeśli start_date jest puste, zapisujemy jako null
+    const payload = {
+      ...newTask,
+      start_date: newTask.start_date ? newTask.start_date : null
+    }
+    await supabase.from('monthly_tasks').insert([payload])
+    setNewTask({ title: '', weight: 1, assignee_id: teens[0]?.id || '', start_date: '', due_date: '' })
     alert('Zadanie dodane')
   }
 
@@ -83,7 +85,6 @@ export default function App() {
     const confirmCopy = window.confirm('Czy na pewno chcesz skopiować wszystkie zadania z obecnego miesiąca na kolejny?')
     if (!confirmCopy) return
 
-    // Pobieramy zadania z obecnego miesiąca
     const date = new Date()
     const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString()
     const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString()
@@ -98,15 +99,22 @@ export default function App() {
       return
     }
 
-    // Przesuwamy datę o 1 miesiąc do przodu
     const newTasks = currentTasks.map(t => {
-      const oldDate = new Date(t.due_date)
-      const newDate = new Date(oldDate.setMonth(oldDate.getMonth() + 1))
+      const oldDue = new Date(t.due_date)
+      const newDue = new Date(oldDue.setMonth(oldDue.getMonth() + 1))
+      
+      let newStart = null
+      if (t.start_date) {
+        const oldStart = new Date(t.start_date)
+        newStart = new Date(oldStart.setMonth(oldStart.getMonth() + 1)).toISOString()
+      }
+
       return {
         assignee_id: t.assignee_id,
         title: t.title,
         weight: t.weight,
-        due_date: newDate.toISOString(),
+        start_date: newStart,
+        due_date: newDue.toISOString(),
         status: 'pending'
       }
     })
@@ -188,7 +196,7 @@ export default function App() {
         <section className="mb-8 bg-white p-4 rounded shadow-sm">
           <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><Plus size={18}/> Zaplanuj zadanie (100%)</h2>
           <form onSubmit={addTask} className="flex flex-col gap-3">
-            <input required placeholder="Nazwa np. Zmywarka" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} className="border p-2 rounded text-sm"/>
+            <input required placeholder="Nazwa np. Spacer z psem" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} className="border p-2 rounded text-sm"/>
             <div className="flex gap-2">
               <select required value={newTask.assignee_id} onChange={e => setNewTask({...newTask, assignee_id: e.target.value})} className="border p-2 rounded text-sm flex-1">
                 <option value="">Wybierz osobę...</option>
@@ -200,7 +208,17 @@ export default function App() {
                 <option value="3">3 pkt</option>
               </select>
             </div>
-            <input required type="datetime-local" value={newTask.due_date} onChange={e => setNewTask({...newTask, due_date: e.target.value})} className="border p-2 rounded text-sm"/>
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Data początkowa (opcjonalnie):</label>
+              <input type="datetime-local" value={newTask.start_date} onChange={e => setNewTask({...newTask, start_date: e.target.value})} className="border p-2 rounded text-sm"/>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Termin ostateczny (Deadline):</label>
+              <input required type="datetime-local" value={newTask.due_date} onChange={e => setNewTask({...newTask, due_date: e.target.value})} className="border p-2 rounded text-sm"/>
+            </div>
+
             <button type="submit" className="bg-blue-600 text-white p-2 rounded text-sm font-bold mt-1">Dodaj zadanie</button>
           </form>
           
@@ -208,7 +226,6 @@ export default function App() {
             <button onClick={copyMonthPlan} className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 p-2 rounded text-sm font-bold hover:bg-gray-200">
               <Copy size={16} /> Skopiuj plan na kolejny miesiąc
             </button>
-            <p className="text-xs text-gray-400 mt-2 text-center">Tworzy kopie wszystkich zadań z obecnego miesiąca z datą +1 miesiąc.</p>
           </div>
         </section>
 
@@ -263,12 +280,16 @@ export default function App() {
               <div>
                 <p className="font-bold text-gray-800">{t.title}</p>
                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                  <Clock size={12}/> Do: {new Date(t.due_date).toLocaleString('pl-PL', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
+                  <Clock size={12}/> 
+                  {t.start_date 
+                    ? `Od: ${new Date(t.start_date).toLocaleString('pl-PL', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})} do ` 
+                    : 'Do: '}
+                  {new Date(t.due_date).toLocaleString('pl-PL', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
                 </p>
               </div>
               <button 
                 onClick={() => markTaskDone(t.id)} 
-                className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-green-50 hover:border-green-500 hover:text-green-500 transition-colors"
+                className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-green-50 hover:border-green-500 hover:text-green-500 transition-colors flex-shrink-0 ml-2"
               >
                 <CheckCircle size={20} />
               </button>
