@@ -36,6 +36,7 @@ export default function App() {
   // Filtry, zakładki i interakcje
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterType, setFilterType] = useState('all') // Nowy filtr typu zadania
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
   const [teenFilterStatus, setTeenFilterStatus] = useState('all')
   const [parentTab, setParentTab] = useState('dashboard') 
@@ -297,6 +298,32 @@ export default function App() {
     return classes[status] || 'text-[#F7F4EB]/65'
   }
 
+  // Zbiór unikalnych nazw zadań dla filtra
+  const uniqueTaskTypes = Array.from(new Set(tasks.map(t => t.title)))
+
+  // Zadania wyfiltrowane dla panelu Rodzica w miesiącu
+  const filteredParentTasks = tasks.filter(t => {
+    if (filterTeen !== 'all' && t.assignee_id !== filterTeen) return false
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false
+    if (filterType !== 'all' && t.title !== filterType) return false
+    if (calendarFilterDay !== null) {
+      const taskDay = new Date(t.due_date).getDate()
+      if (taskDay !== calendarFilterDay) return false
+    }
+    return true
+  })
+
+  // Zbiór dni z zaplanowanymi zadaniami dla sterownika kalendarza
+  const daysWithTasksSet = new Set(
+    tasks
+      .filter(t => 
+        (filterTeen === 'all' || t.assignee_id === filterTeen) && 
+        (filterStatus === 'all' || t.status === filterStatus) &&
+        (filterType === 'all' || t.title === filterType)
+      )
+      .map(t => new Date(t.due_date).getDate())
+  )
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] text-[#F7F4EB] flex flex-col items-center justify-center p-4 font-sans">
@@ -411,24 +438,6 @@ export default function App() {
       </div>
     )
   }
-
-  // Zadania wyfiltrowane dla panelu Rodzica w miesiącu
-  const filteredParentTasks = tasks.filter(t => {
-    if (filterTeen !== 'all' && t.assignee_id !== filterTeen) return false
-    if (filterStatus !== 'all' && t.status !== filterStatus) return false
-    if (calendarFilterDay !== null) {
-      const taskDay = new Date(t.due_date).getDate()
-      if (taskDay !== calendarFilterDay) return false
-    }
-    return true
-  })
-
-  // Zbiór dni z zaplanowanymi zadaniami dla sterownika kalendarza (z uwzględnieniem filtrów osoby/statusu)
-  const daysWithTasksSet = new Set(
-    tasks
-      .filter(t => (filterTeen === 'all' || t.assignee_id === filterTeen) && (filterStatus === 'all' || t.status === filterStatus))
-      .map(t => new Date(t.due_date).getDate())
-  )
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] text-[#F7F4EB] pb-12 font-sans">
@@ -616,13 +625,13 @@ export default function App() {
 
                       <form onSubmit={handleSaveTask} className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-4">
-                          <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} className="bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
+                          <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
                             {taskMode === 'extra' && <option value="all" className="bg-[#1E0F24]">Tablica (Giełda)</option>}
                             {teens.map(t => <option key={t.id} value={t.id} className="bg-[#1E0F24]">{t.name}</option>)}
                           </select>
 
                           {taskMode === 'base' && !editingTaskId && (
-                            <select value={taskTemplate} onChange={e => setTaskTemplate(e.target.value)} className="bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
+                            <select value={taskTemplate} onChange={e => setTaskTemplate(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
                               {Object.keys(TEMPLATES).map(key => <option key={key} value={key} className="bg-[#1E0F24]">{TEMPLATES[key].title}</option>)}
                             </select>
                           )}
@@ -732,18 +741,26 @@ export default function App() {
                     )}
                   </div>
 
-              {/* Filtry selektorów */}
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    <select value={filterTeen} onChange={e => setFilterTeen(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
-                      <option value="all" className="bg-[#1E0F24]">Wszyscy wykonawcy</option>
-                      {teens.map(t => <option key={t.id} value={t.id} className="bg-[#1E0F24]">{t.name}</option>)}
-                    </select>
-                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
-                      <option value="all" className="bg-[#1E0F24]">Wszystkie statusy</option>
-                      <option value="pending" className="bg-[#1E0F24]">Do zrobienia</option>
-                      <option value="waiting_approval" className="bg-[#1E0F24]">Czekają</option>
-                      <option value="approved" className="bg-[#1E0F24]">Zatwierdzone</option>
-                      <option value="failed" className="bg-[#1E0F24]">Niewykonane</option>
+                  {/* Filtry selektorów */}
+                  <div className="flex flex-col gap-3 mb-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <select value={filterTeen} onChange={e => setFilterTeen(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
+                        <option value="all" className="bg-[#1E0F24]">Wszyscy wykonawcy</option>
+                        {teens.map(t => <option key={t.id} value={t.id} className="bg-[#1E0F24]">{t.name}</option>)}
+                      </select>
+                      <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
+                        <option value="all" className="bg-[#1E0F24]">Wszystkie statusy</option>
+                        <option value="pending" className="bg-[#1E0F24]">Do zrobienia</option>
+                        <option value="waiting_approval" className="bg-[#1E0F24]">Czekają</option>
+                        <option value="approved" className="bg-[#1E0F24]">Zatwierdzone</option>
+                        <option value="failed" className="bg-[#1E0F24]">Niewykonane</option>
+                      </select>
+                    </div>
+                    <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
+                      <option value="all" className="bg-[#1E0F24]">Wszystkie typy zadań</option>
+                      {uniqueTaskTypes.map(type => (
+                        <option key={type} value={type} className="bg-[#1E0F24]">{type}</option>
+                      ))}
                     </select>
                   </div>
 
