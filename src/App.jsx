@@ -732,13 +732,13 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Filtry selektorów */}
-                  <div className="flex gap-3 mb-5">
-                    <select value={filterTeen} onChange={e => setFilterTeen(e.target.value)} className="flex-1 bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
+              {/* Filtry selektorów */}
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <select value={filterTeen} onChange={e => setFilterTeen(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
                       <option value="all" className="bg-[#1E0F24]">Wszyscy wykonawcy</option>
                       {teens.map(t => <option key={t.id} value={t.id} className="bg-[#1E0F24]">{t.name}</option>)}
                     </select>
-                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="flex-1 bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
+                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
                       <option value="all" className="bg-[#1E0F24]">Wszystkie statusy</option>
                       <option value="pending" className="bg-[#1E0F24]">Do zrobienia</option>
                       <option value="waiting_approval" className="bg-[#1E0F24]">Czekają</option>
