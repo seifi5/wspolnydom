@@ -13,6 +13,18 @@ const TEMPLATES = {
 
 const WEEKDAYS_SHORT = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
 
+// Funkcja pomocnicza do kodowania klucza VAPID
+const urlB64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4)
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+  return outputArray
+}
+
 export default function App() {
   const [pin, setPin] = useState('')
   const [user, setUser] = useState(null)
@@ -20,6 +32,10 @@ export default function App() {
   const [allTasks, setAllTasks] = useState([])
   const [teens, setTeens] = useState([])
   const [budgets, setBudgets] = useState({})
+
+  // Stan dla powiadomień Web Push
+  const [pushSupported, setPushSupported] = useState(false)
+  const [isPushEnabled, setIsPushEnabled] = useState(false)
 
   // Formularz planowania
   const [isPlannerOpen, setIsPlannerOpen] = useState(false)
@@ -37,7 +53,7 @@ export default function App() {
   // Filtry, zakładki i interakcje
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
-  const [filterType, setFilterType] = useState('all') // Nowy filtr typu zadania
+  const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
   const [teenFilterStatus, setTeenFilterStatus] = useState('all')
   const [parentTab, setParentTab] = useState('dashboard') 
@@ -53,7 +69,6 @@ export default function App() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-  // Przesunięcie pierwszego dnia miesiąca (0: Poniedziałek, 6: Niedziela)
   const firstDayOfMonthRaw = new Date(year, month, 1).getDay()
   const firstDayOffset = (firstDayOfMonthRaw + 6) % 7
 
@@ -66,6 +81,57 @@ export default function App() {
   const showToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(''), 3000)
+  }
+
+  // Sprawdzanie wsparcia dla Service Workera i subskrypcji Push
+  useEffect(() => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      setPushSupported(true)
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          if (sub) setIsPushEnabled(true)
+        })
+      })
+    }
+  }, [])
+
+  // Logika zapisu na powiadomienia Push
+  const subscribeToPush = async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+      
+      if (!vapidPublicKey) {
+        showToast('Brak klucza VAPID w systemie')
+        return
+      }
+
+      const convertedVapidKey = urlB64ToUint8Array(vapidPublicKey)
+      
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      })
+
+      const { error } = await supabase.from('push_subscriptions').insert([
+        { user_id: user.id, subscription: subscription }
+      ])
+
+      if (error) {
+        console.error(error)
+        showToast('Błąd rejestracji w bazie')
+      } else {
+        setIsPushEnabled(true)
+        showToast('Powiadomienia zostały włączone')
+      }
+    } catch (err) {
+      console.error(err)
+      if (Notification.permission === 'denied') {
+        showToast('Odrzucono zgodę na powiadomienia. Zmień w ustawieniach.')
+      } else {
+        showToast('Nie udało się włączyć powiadomień')
+      }
+    }
   }
 
   const toLocalIsoString = (isoString) => {
@@ -131,7 +197,6 @@ export default function App() {
     return { successRate, maxPoints, earnedPoints, currentBaseEarned, hasBonus, bonusAllowance, extraEarned, totalPayout }
   }
 
-  // Grupowanie typów zadań bazowych dla danego nastolatka
   const getTeenTaskBreakdown = (teenId) => {
     const teenTasks = tasks.filter(t => t.assignee_id === teenId && t.reward === 0)
     const breakdown = {}
@@ -299,10 +364,8 @@ export default function App() {
     return classes[status] || 'text-[#F7F4EB]/65'
   }
 
-  // Zbiór unikalnych nazw zadań dla filtra
   const uniqueTaskTypes = Array.from(new Set(tasks.map(t => t.title)))
 
-  // Zadania wyfiltrowane dla panelu Rodzica w miesiącu
   const filteredParentTasks = tasks.filter(t => {
     if (filterTeen !== 'all' && t.assignee_id !== filterTeen) return false
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
@@ -314,7 +377,6 @@ export default function App() {
     return true
   })
 
-  // Zbiór dni z zaplanowanymi zadaniami dla sterownika kalendarza
   const daysWithTasksSet = new Set(
     tasks
       .filter(t => 
@@ -443,7 +505,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] text-[#F7F4EB] pb-12 font-sans">
       
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none transition-all duration-300">
           <div className="bg-[#120816]/80 backdrop-blur-[20px] border border-white/[0.12] text-[#F7F4EB] px-6 py-3 rounded-full shadow-2xl text-xs font-bold text-center w-auto max-w-sm">
@@ -452,7 +513,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Header */}
       <div className="px-6 py-5 flex justify-between items-center sticky top-0 z-40 bg-white/[0.02] backdrop-blur-[20px] border-b border-white/[0.08]">
         <div>
           <h1 className="text-sm font-bold tracking-widest uppercase text-[#F7F4EB]">
@@ -502,7 +562,6 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Rozwijana ramka szczegółów planu dziecka */}
                         {isExpanded && (
                           <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-4">
                             <div>
@@ -595,8 +654,6 @@ export default function App() {
 
             {parentTab === 'tasks' && (
               <div className="transition-opacity duration-300">
-                
-                {/* Zwijana sekcja planowania zadań */}
                 <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] rounded-[24px] shadow-lg mb-6 overflow-hidden transition-all duration-200">
                   <div 
                     onClick={() => setIsPlannerOpen(!isPlannerOpen)}
@@ -668,19 +725,16 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* Siatka kalendarza dostosowana do dni tygodnia */}
                         {taskMode === 'base' && taskTemplate !== 'custom' && !editingTaskId && (
                           <div className="mt-2">
                             <div className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-3">Wybierz dni realizacji ({currentMonthName})</div>
                             
-                            {/* Nagłówki dni tygodnia */}
                             <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-[10px] font-bold text-[#F7F4EB]/50">
                               {WEEKDAYS_SHORT.map((wd, i) => (
                                 <span key={wd} className={i >= 5 ? 'text-[#F7F4EB]/30' : ''}>{wd}</span>
                               ))}
                             </div>
 
-                            {/* Prawdziwa siatka miesiąca z przesunięciem */}
                             <div className="grid grid-cols-7 gap-1.5 mb-4">
                               {Array.from({ length: firstDayOffset }).map((_, i) => (
                                 <div key={`offset-${i}`} className="h-9"></div>
@@ -728,7 +782,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Sekcja przeglądu zadań i sterownik kalendarza */}
                 <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Przegląd zadań</h2>
@@ -742,7 +795,6 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Filtry selektorów */}
                   <div className="flex flex-col gap-3 mb-5">
                     <div className="grid grid-cols-2 gap-3">
                       <select value={filterTeen} onChange={e => setFilterTeen(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
@@ -765,7 +817,6 @@ export default function App() {
                     </select>
                   </div>
 
-                  {/* Dyskretny Kalendarz Sterujący nad listą */}
                   <div className="bg-white/[0.03] border border-white/[0.06] p-3 rounded-2xl mb-6">
                     <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#F7F4EB]/40 mb-1.5">
                       {WEEKDAYS_SHORT.map((wd, i) => (
@@ -803,7 +854,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Lista zadań wg filtrów */}
                   <div className="flex flex-col">
                     {filteredParentTasks.length === 0 ? (
                       <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak zadań w wybranym filtrze.</p>
@@ -846,7 +896,7 @@ export default function App() {
             )}
           </>
         ) : (
-          // --- WIDOK NASTOLATKA (BEZ ZMIAN W ARCHITEKTURZE) ---
+          // --- WIDOK NASTOLATKA ---
           <>
             {(() => {
               const stats = calculateStats(user.id, tasks, user)
@@ -861,6 +911,22 @@ export default function App() {
 
               return (
                 <>
+                  {/* Nowy Baner Push Notifications */}
+                  {pushSupported && !isPushEnabled && (
+                    <div className="bg-white/[0.06] backdrop-blur-[20px] border border-[#F7F4EB]/20 p-5 rounded-[24px] shadow-lg mb-6 flex flex-col gap-3 transition-all">
+                      <div>
+                        <h3 className="font-bold text-[#F7F4EB] text-xs tracking-widest uppercase">Powiadomienia włączone?</h3>
+                        <p className="text-[10px] text-[#F7F4EB]/70 mt-1">Uruchom powiadomienia, żeby aplikacja przypomniała Ci o zbliżającym się końcu czasu na zadania.</p>
+                      </div>
+                      <button 
+                        onClick={subscribeToPush} 
+                        className="w-full bg-[#F7F4EB]/10 hover:bg-[#F7F4EB]/15 text-[#F7F4EB] border border-[#F7F4EB]/20 font-bold py-3 rounded-[14px] text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all duration-200 mt-1"
+                      >
+                        Włącz powiadomienia
+                      </button>
+                    </div>
+                  )}
+
                   <div 
                     onClick={handleStatsClick}
                     className="cursor-pointer bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-7 rounded-[24px] shadow-lg mb-6 active:scale-[0.98] transition-all duration-200"
