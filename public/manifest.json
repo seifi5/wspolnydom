@@ -3,13 +3,18 @@
   "short_name": "Wspólny Dom",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#2563eb",
+  "background_color": "#120816",
+  "theme_color": "#120816",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/vitejs/vite/main/docs/images/vite.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ]
 }
