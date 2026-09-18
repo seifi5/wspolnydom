@@ -62,7 +62,7 @@ export default function App() {
   const [parentTab, setParentTab] = useState('dashboard') 
   const [teenTab, setTeenTab] = useState('active') 
   const [expandedTeenId, setExpandedTeenId] = useState(null)
-  const [expandedDetailsTeenId, setExpandedDetailsTeenId] = useState(null) // Do widoku szczegółowego %
+  const [expandedDetailsTeenId, setExpandedDetailsTeenId] = useState(null) 
   const [expandedMonth, setExpandedMonth] = useState(null) 
 
   const [toastMessage, setToastMessage] = useState('')
@@ -87,7 +87,6 @@ export default function App() {
     setTimeout(() => setToastMessage(''), 3000)
   }
 
-  // Ładowanie domyślnych wartości przy zmianie szablonu
   useEffect(() => {
     if (taskTemplate && taskTemplate !== 'custom' && TEMPLATES[taskTemplate]) {
       const pad = (n) => String(n).padStart(2, '0')
@@ -364,7 +363,7 @@ export default function App() {
       pending: 'text-[#F7F4EB]/65',
       waiting_approval: 'text-[#F7F4EB]/80',
       approved: 'text-[#F7F4EB]',
-      failed: 'text-[#E53E3E]/90' // Bardziej wyrazisty czerwony dla porażki
+      failed: 'text-[#E53E3E]/90'
     }
     return classes[status] || 'text-[#F7F4EB]/65'
   }
@@ -543,7 +542,6 @@ export default function App() {
                     const stats = calculateStats(teen.id, tasks, teen)
                     const isExpanded = expandedTeenId === teen.id
                     
-                    // Podział zadań na oceniane i przyszłe dla danego dziecka
                     const teenBaseTasks = tasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
                     const evaluatedTasks = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) < now)
                     const futureTasks = teenBaseTasks.filter(t => t.status === 'pending' && new Date(t.due_date) >= now)
@@ -551,19 +549,22 @@ export default function App() {
                     
                     const isDetailsExpanded = expandedDetailsTeenId === teen.id
 
-                    // Przetwarzanie grupowe dla zadań przyszłych
                     const futureBreakdown = {}
                     futureTasks.forEach(t => {
-                      if (!futureBreakdown[t.title]) futureBreakdown[t.title] = { planned: 0, weight: t.weight }
-                      futureBreakdown[t.title].planned += 1
+                      if (!futureBreakdown[t.title]) futureBreakdown[t.title] = { plannedTasks: 0, plannedPoints: 0, weight: t.weight }
+                      futureBreakdown[t.title].plannedTasks += 1
+                      futureBreakdown[t.title].plannedPoints += t.weight
                     })
 
-                    // Zestawienie wykonania (% podsumowanie dla konkretnych grup zadań ocenionych)
                     const evaluatedBreakdown = {}
                     evaluatedTasks.forEach(t => {
-                      if (!evaluatedBreakdown[t.title]) evaluatedBreakdown[t.title] = { total: 0, approved: 0, weight: t.weight }
-                      evaluatedBreakdown[t.title].total += 1
-                      if (t.status === 'approved') evaluatedBreakdown[t.title].approved += 1
+                      if (!evaluatedBreakdown[t.title]) evaluatedBreakdown[t.title] = { totalTasks: 0, approvedTasks: 0, totalPoints: 0, earnedPoints: 0, weight: t.weight }
+                      evaluatedBreakdown[t.title].totalTasks += 1
+                      evaluatedBreakdown[t.title].totalPoints += t.weight
+                      if (t.status === 'approved') {
+                        evaluatedBreakdown[t.title].approvedTasks += 1
+                        evaluatedBreakdown[t.title].earnedPoints += t.weight
+                      }
                     })
 
                     return (
@@ -589,7 +590,6 @@ export default function App() {
                         {isExpanded && (
                           <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-6">
                             
-                            {/* Sekcja 1: Ocenione zadania (Wpływające na obecny wynik) */}
                             <div>
                               <div className="flex justify-between items-end mb-3">
                                 <div>
@@ -605,7 +605,6 @@ export default function App() {
                               </div>
 
                               {!isDetailsExpanded ? (
-                                // Widok zagregowany dla zadań ocenionych
                                 Object.keys(evaluatedBreakdown).length === 0 ? (
                                   <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań wpływających na wynik w tym miesiącu.</p>
                                 ) : (
@@ -614,18 +613,17 @@ export default function App() {
                                       <div key={title} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
                                         <div>
                                           <p className="text-xs font-semibold text-[#F7F4EB]">{title}</p>
-                                          <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">Skuteczność: {Math.round((item.approved/item.total)*100)}% ({item.weight} pkt)</p>
+                                          <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">Wykonanie: {item.approvedTasks} / {item.totalTasks} szt.</p>
                                         </div>
                                         <div className="text-right">
-                                          <span className="text-xs font-bold text-[#F7F4EB]">{item.approved} / {item.total}</span>
-                                          <span className="text-[10px] text-[#F7F4EB]/50 block">zrobione</span>
+                                          <span className="text-xs font-bold text-[#F7F4EB]">{item.earnedPoints} / {item.totalPoints}</span>
+                                          <span className="text-[10px] text-[#F7F4EB]/50 block">pkt</span>
                                         </div>
                                       </div>
                                     ))}
                                   </div>
                                 )
                               ) : (
-                                // Widok pełnej listy zadań ocenionych (rozwiązanie problemu)
                                 <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 max-h-[300px] overflow-y-auto">
                                   {evaluatedTasks.length === 0 ? (
                                      <p className="text-xs text-[#F7F4EB]/50 py-1 text-center">Brak zadań w tej grupie.</p>
@@ -646,7 +644,6 @@ export default function App() {
                               )}
                             </div>
 
-                            {/* Sekcja 2: Zadania Zaplanowane (Nieocenione) */}
                             <div className="pt-4 border-t border-white/[0.06]">
                               <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-3">Zadania zaplanowane (Później)</h3>
                               {Object.keys(futureBreakdown).length === 0 ? (
@@ -654,19 +651,18 @@ export default function App() {
                               ) : (
                                 <div className="flex flex-col gap-2">
                                   {Object.entries(futureBreakdown).map(([title, item]) => (
-                                    <div key={title} className="flex justify-between items-center py-1 text-xs">
+                                    <div key={title} className="flex justify-between items-center py-1 text-xs border-b border-white/[0.04] last:border-0">
                                       <div>
-                                        <span className="text-[#F7F4EB]/80">{title}</span>
-                                        <span className="text-[9px] text-[#F7F4EB]/40 ml-2">({item.weight} pkt/szt)</span>
+                                        <span className="text-[#F7F4EB]/80 font-medium">{title}</span>
+                                        <span className="text-[9px] text-[#F7F4EB]/40 ml-2">({item.plannedTasks} szt.)</span>
                                       </div>
-                                      <span className="font-semibold text-[#F7F4EB]">{item.planned} zaplan.</span>
+                                      <span className="font-semibold text-[#F7F4EB]">{item.plannedPoints} pkt</span>
                                     </div>
                                   ))}
                                 </div>
                               )}
                             </div>
 
-                            {/* Sekcja 3: Giełda */}
                             <div className="pt-4 border-t border-white/[0.06]">
                               <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-2">Zadania Ad-hoc (Giełda)</h3>
                               {teenAdHoc.length === 0 ? (
@@ -776,7 +772,6 @@ export default function App() {
                           )}
                         </div>
 
-                        {/* Moduł edycji dla Zadań Niestandardowych, Giełdy ORAZ Edytowalnych Szablonów */}
                         {(taskTemplate === 'custom' || taskMode === 'extra' || editingTaskId) ? (
                           <div className="flex flex-col gap-4">
                             <input type="text" placeholder="Opisz zadanie..." value={customTitle} onChange={e => setCustomTitle(e.target.value)} className="bg-white/[0.02] border-b border-white/[0.12] text-[#F7F4EB] placeholder-[#F7F4EB]/40 p-3 text-sm focus:border-white/[0.3] outline-none transition-colors" />
@@ -806,7 +801,6 @@ export default function App() {
                             </div>
                           </div>
                         ) : (
-                          // Nowy moduł Edytowalnych Parametrów Szablonów (Smart Templates)
                           <div className="bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl flex flex-col gap-3">
                             <label className="text-[9px] uppercase tracking-widest text-[#F7F4EB]/50">Parametry Szablonu (Edytowalne)</label>
                             <div className="grid grid-cols-3 gap-3">
