@@ -27,6 +27,7 @@ const urlB64ToUint8Array = (base64String) => {
 export default function App() {
   const [pin, setPin] = useState('')
   const [user, setUser] = useState(null)
+  const [isSessionLoading, setIsSessionLoading] = useState(true) // Nowy stan dla "Zapamiętaj mnie"
   const [error, setError] = useState('')
   const [allTasks, setAllTasks] = useState([])
   const [teens, setTeens] = useState([])
@@ -206,19 +207,6 @@ export default function App() {
     return { successRate, maxPoints, earnedPoints, currentBaseEarned, hasBonus, bonusAllowance, extraEarned, totalPayout }
   }
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    setError('')
-    const { data, error } = await supabase.from('profiles').select('*').eq('pin', pin).single()
-    if (error || !data) {
-      setError('Nieprawidłowy PIN')
-    } else {
-      setUser(data)
-      fetchTeens()
-      fetchTasks()
-    }
-  }
-
   const fetchTeens = async () => {
     const { data } = await supabase.from('profiles').select('*').eq('role', 'teen')
     if (data) {
@@ -233,6 +221,37 @@ export default function App() {
   const fetchTasks = async () => {
     const { data } = await supabase.from('monthly_tasks').select('*, profiles(name)').order('due_date', { ascending: true }).limit(1000)
     if (data) setAllTasks(data)
+  }
+
+  // Nowy efekt: Logowanie z pamięci przeglądarki (localStorage)
+  useEffect(() => {
+    const restoreSession = async () => {
+      const savedId = localStorage.getItem('wspolnydom_user_id')
+      if (savedId) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', savedId).single()
+        if (data) {
+          setUser(data)
+          fetchTeens()
+          fetchTasks()
+        }
+      }
+      setIsSessionLoading(false)
+    }
+    restoreSession()
+  }, [])
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setError('')
+    const { data, error } = await supabase.from('profiles').select('*').eq('pin', pin).single()
+    if (error || !data) {
+      setError('Nieprawidłowy PIN')
+    } else {
+      setUser(data)
+      localStorage.setItem('wspolnydom_user_id', data.id) // Zapisanie sesji!
+      fetchTeens()
+      fetchTasks()
+    }
   }
 
   const handleSaveTask = async (e) => {
@@ -391,6 +410,15 @@ export default function App() {
       .map(t => new Date(t.due_date).getDate())
   )
 
+  // Ekran ładowania (aby nie mignął panel logowania przed wczytaniem z pamięci)
+  if (isSessionLoading) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#F7F4EB]/20 border-t-[#F7F4EB] rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] text-[#F7F4EB] flex flex-col items-center justify-center p-4 font-sans">
@@ -523,7 +551,16 @@ export default function App() {
           </h1>
           <p className="text-[10px] text-[#F7F4EB]/65 font-medium tracking-widest mt-1">{currentMonthName}</p>
         </div>
-        <button onClick={() => setUser(null)} className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] px-4 py-2 rounded-full transition-all duration-200 active:scale-95 border border-white/[0.08]">Wyloguj</button>
+        <button 
+          onClick={() => { 
+            setUser(null); 
+            setPin(''); 
+            localStorage.removeItem('wspolnydom_user_id'); // Wylogowanie czyści pamięć!
+          }} 
+          className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] px-4 py-2 rounded-full transition-all duration-200 active:scale-95 border border-white/[0.08]"
+        >
+          Wyloguj
+        </button>
       </div>
 
       <div className="p-4 max-w-md mx-auto mt-2">
