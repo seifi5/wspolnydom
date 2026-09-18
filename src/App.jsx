@@ -13,7 +13,6 @@ const TEMPLATES = {
 
 const WEEKDAYS_SHORT = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
 
-// Funkcja pomocnicza do kodowania klucza VAPID
 const urlB64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
   const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/')
@@ -33,7 +32,6 @@ export default function App() {
   const [teens, setTeens] = useState([])
   const [budgets, setBudgets] = useState({})
 
-  // Stan dla powiadomień Web Push
   const [pushSupported, setPushSupported] = useState(false)
   const [isPushEnabled, setIsPushEnabled] = useState(false)
 
@@ -50,6 +48,11 @@ export default function App() {
   const [dueDate, setDueDate] = useState('')
   const [editingTaskId, setEditingTaskId] = useState(null)
 
+  // Edycja parametrów szablonu "w locie"
+  const [templateStart, setTemplateStart] = useState('07:00')
+  const [templateDue, setTemplateDue] = useState('09:00')
+  const [templateWeight, setTemplateWeight] = useState(1)
+
   // Filtry, zakładki i interakcje
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -59,6 +62,7 @@ export default function App() {
   const [parentTab, setParentTab] = useState('dashboard') 
   const [teenTab, setTeenTab] = useState('active') 
   const [expandedTeenId, setExpandedTeenId] = useState(null)
+  const [expandedDetailsTeenId, setExpandedDetailsTeenId] = useState(null) // Do widoku szczegółowego %
   const [expandedMonth, setExpandedMonth] = useState(null) 
 
   const [toastMessage, setToastMessage] = useState('')
@@ -83,7 +87,16 @@ export default function App() {
     setTimeout(() => setToastMessage(''), 3000)
   }
 
-  // Sprawdzanie wsparcia dla Service Workera i subskrypcji Push
+  // Ładowanie domyślnych wartości przy zmianie szablonu
+  useEffect(() => {
+    if (taskTemplate && taskTemplate !== 'custom' && TEMPLATES[taskTemplate]) {
+      const pad = (n) => String(n).padStart(2, '0')
+      setTemplateStart(`${pad(TEMPLATES[taskTemplate].startHour)}:00`)
+      setTemplateDue(`${pad(TEMPLATES[taskTemplate].dueHour)}:00`)
+      setTemplateWeight(TEMPLATES[taskTemplate].weight)
+    }
+  }, [taskTemplate])
+
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       setPushSupported(true)
@@ -95,7 +108,6 @@ export default function App() {
     }
   }, [])
 
-  // Logika zapisu na powiadomienia Push
   const subscribeToPush = async () => {
     try {
       const reg = await navigator.serviceWorker.ready
@@ -105,9 +117,7 @@ export default function App() {
         showToast('Brak klucza VAPID w systemie')
         return
       }
-
       const convertedVapidKey = urlB64ToUint8Array(vapidPublicKey)
-      
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
@@ -197,19 +207,6 @@ export default function App() {
     return { successRate, maxPoints, earnedPoints, currentBaseEarned, hasBonus, bonusAllowance, extraEarned, totalPayout }
   }
 
-  const getTeenTaskBreakdown = (teenId) => {
-    const teenTasks = tasks.filter(t => t.assignee_id === teenId && t.reward === 0)
-    const breakdown = {}
-    teenTasks.forEach(t => {
-      if (!breakdown[t.title]) {
-        breakdown[t.title] = { planned: 0, approved: 0, weight: t.weight }
-      }
-      breakdown[t.title].planned += 1
-      if (t.status === 'approved') breakdown[t.title].approved += 1
-    })
-    return breakdown
-  }
-
   const handleLogin = async (e) => {
     e.preventDefault()
     setError('')
@@ -262,10 +259,18 @@ export default function App() {
     } else {
       if (selectedDays.length === 0) return alert('Zaznacz dni w kalendarzu.')
       const t = TEMPLATES[taskTemplate]
+      
+      const [startH, startM] = templateStart.split(':').map(Number)
+      const [dueH, dueM] = templateDue.split(':').map(Number)
+
       const inserts = selectedDays.map(day => ({
-        title: t.title, assignee_id: assigneeId, weight: t.weight, reward: 0,
-        start_date: new Date(year, month, day, t.startHour, 0, 0).toISOString(),
-        due_date: new Date(year, month, day, t.dueHour, 0, 0).toISOString(), status: 'pending'
+        title: t.title, 
+        assignee_id: assigneeId, 
+        weight: parseInt(templateWeight), 
+        reward: 0,
+        start_date: new Date(year, month, day, startH, startM, 0).toISOString(),
+        due_date: new Date(year, month, day, dueH, dueM, 0).toISOString(), 
+        status: 'pending'
       }))
       await supabase.from('monthly_tasks').insert(inserts)
     }
@@ -359,7 +364,7 @@ export default function App() {
       pending: 'text-[#F7F4EB]/65',
       waiting_approval: 'text-[#F7F4EB]/80',
       approved: 'text-[#F7F4EB]',
-      failed: 'text-[#F7F4EB]/40'
+      failed: 'text-[#E53E3E]/90' // Bardziej wyrazisty czerwony dla porażki
     }
     return classes[status] || 'text-[#F7F4EB]/65'
   }
@@ -420,7 +425,6 @@ export default function App() {
           >
             Wejdź
           </button>
-
           {error && <p className="text-[#F7F4EB]/70 text-center text-xs font-semibold">{error}</p>}
         </form>
       </div>
@@ -525,7 +529,6 @@ export default function App() {
 
       <div className="p-4 max-w-md mx-auto mt-2">
         {user.role === 'parent' ? (
-          // --- WIDOK RODZICA ---
           <>
             <div className="flex bg-white/[0.04] p-1 rounded-2xl mb-6 border border-white/[0.08]">
               <button onClick={() => setParentTab('dashboard')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'dashboard' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Pulpit</button>
@@ -539,8 +542,29 @@ export default function App() {
                   {teens.map(teen => {
                     const stats = calculateStats(teen.id, tasks, teen)
                     const isExpanded = expandedTeenId === teen.id
-                    const breakdown = getTeenTaskBreakdown(teen.id)
+                    
+                    // Podział zadań na oceniane i przyszłe dla danego dziecka
+                    const teenBaseTasks = tasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
+                    const evaluatedTasks = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) < now)
+                    const futureTasks = teenBaseTasks.filter(t => t.status === 'pending' && new Date(t.due_date) >= now)
                     const teenAdHoc = tasks.filter(t => t.assignee_id === teen.id && t.reward > 0)
+                    
+                    const isDetailsExpanded = expandedDetailsTeenId === teen.id
+
+                    // Przetwarzanie grupowe dla zadań przyszłych
+                    const futureBreakdown = {}
+                    futureTasks.forEach(t => {
+                      if (!futureBreakdown[t.title]) futureBreakdown[t.title] = { planned: 0, weight: t.weight }
+                      futureBreakdown[t.title].planned += 1
+                    })
+
+                    // Zestawienie wykonania (% podsumowanie dla konkretnych grup zadań ocenionych)
+                    const evaluatedBreakdown = {}
+                    evaluatedTasks.forEach(t => {
+                      if (!evaluatedBreakdown[t.title]) evaluatedBreakdown[t.title] = { total: 0, approved: 0, weight: t.weight }
+                      evaluatedBreakdown[t.title].total += 1
+                      if (t.status === 'approved') evaluatedBreakdown[t.title].approved += 1
+                    })
 
                     return (
                       <div key={teen.id} className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] rounded-[24px] shadow-lg overflow-hidden transition-all duration-200">
@@ -555,7 +579,7 @@ export default function App() {
                                 {isExpanded ? 'Zwiń' : 'Szczegóły'}
                               </span>
                             </div>
-                            <p className="text-xs text-[#F7F4EB]/65 mt-1">Skuteczność: <span className="font-bold text-[#F7F4EB]">{stats.successRate}%</span></p>
+                            <p className="text-xs text-[#F7F4EB]/65 mt-1">Obecna Skuteczność: <span className="font-bold text-[#F7F4EB]">{stats.successRate}%</span></p>
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-[#F7F4EB]">{stats.totalPayout.toFixed(0)} zł</div>
@@ -563,30 +587,87 @@ export default function App() {
                         </div>
 
                         {isExpanded && (
-                          <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-4">
+                          <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-6">
+                            
+                            {/* Sekcja 1: Ocenione zadania (Wpływające na obecny wynik) */}
                             <div>
-                              <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-3">Struktura obowiązków bazowych</h3>
-                              {Object.keys(breakdown).length === 0 ? (
-                                <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zaplanowanych obowiązków bazowych.</p>
+                              <div className="flex justify-between items-end mb-3">
+                                <div>
+                                  <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/90">Wpływające na wynik (%)</h3>
+                                  <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">Zadania przeterminowane lub zakończone</p>
+                                </div>
+                                <button 
+                                  onClick={() => setExpandedDetailsTeenId(isDetailsExpanded ? null : teen.id)}
+                                  className="text-[9px] uppercase tracking-wider font-bold bg-white/[0.08] hover:bg-white/[0.15] text-[#F7F4EB]/80 px-3 py-1.5 rounded-full transition-all"
+                                >
+                                  {isDetailsExpanded ? 'Ukryj Listę' : 'Pokaż Listę'}
+                                </button>
+                              </div>
+
+                              {!isDetailsExpanded ? (
+                                // Widok zagregowany dla zadań ocenionych
+                                Object.keys(evaluatedBreakdown).length === 0 ? (
+                                  <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań wpływających na wynik w tym miesiącu.</p>
+                                ) : (
+                                  <div className="flex flex-col gap-2">
+                                    {Object.entries(evaluatedBreakdown).map(([title, item]) => (
+                                      <div key={title} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                                        <div>
+                                          <p className="text-xs font-semibold text-[#F7F4EB]">{title}</p>
+                                          <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">Skuteczność: {Math.round((item.approved/item.total)*100)}% ({item.weight} pkt)</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <span className="text-xs font-bold text-[#F7F4EB]">{item.approved} / {item.total}</span>
+                                          <span className="text-[10px] text-[#F7F4EB]/50 block">zrobione</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )
+                              ) : (
+                                // Widok pełnej listy zadań ocenionych (rozwiązanie problemu)
+                                <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 max-h-[300px] overflow-y-auto">
+                                  {evaluatedTasks.length === 0 ? (
+                                     <p className="text-xs text-[#F7F4EB]/50 py-1 text-center">Brak zadań w tej grupie.</p>
+                                  ) : (
+                                    [...evaluatedTasks].sort((a,b) => new Date(a.due_date) - new Date(b.due_date)).map(t => (
+                                      <div key={t.id} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                                        <div className="flex-1 pr-2">
+                                          <p className="text-[11px] font-semibold text-[#F7F4EB] leading-tight">{t.title}</p>
+                                          <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">{new Date(t.due_date).toLocaleDateString('pl-PL')} {new Date(t.due_date).toLocaleTimeString('pl-PL', {hour: '2-digit', minute:'2-digit'})}</p>
+                                        </div>
+                                        <div className="text-right min-w-[70px]">
+                                          <span className={`text-[10px] font-bold ${getStatusClass(t.status)}`}>{translateStatus(t.status)}</span>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Sekcja 2: Zadania Zaplanowane (Nieocenione) */}
+                            <div className="pt-4 border-t border-white/[0.06]">
+                              <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-3">Zadania zaplanowane (Później)</h3>
+                              {Object.keys(futureBreakdown).length === 0 ? (
+                                <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań na resztę miesiąca.</p>
                               ) : (
                                 <div className="flex flex-col gap-2">
-                                  {Object.entries(breakdown).map(([title, item]) => (
-                                    <div key={title} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                                  {Object.entries(futureBreakdown).map(([title, item]) => (
+                                    <div key={title} className="flex justify-between items-center py-1 text-xs">
                                       <div>
-                                        <p className="text-xs font-semibold text-[#F7F4EB]">{title}</p>
-                                        <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">Waga jednostkowa: {item.weight} pkt | Razem: {item.planned * item.weight} pkt</p>
+                                        <span className="text-[#F7F4EB]/80">{title}</span>
+                                        <span className="text-[9px] text-[#F7F4EB]/40 ml-2">({item.weight} pkt/szt)</span>
                                       </div>
-                                      <div className="text-right">
-                                        <span className="text-xs font-bold text-[#F7F4EB]">{item.approved} / {item.planned}</span>
-                                        <span className="text-[10px] text-[#F7F4EB]/50 block">zrobione</span>
-                                      </div>
+                                      <span className="font-semibold text-[#F7F4EB]">{item.planned} zaplan.</span>
                                     </div>
                                   ))}
                                 </div>
                               )}
                             </div>
 
-                            <div>
+                            {/* Sekcja 3: Giełda */}
+                            <div className="pt-4 border-t border-white/[0.06]">
                               <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-2">Zadania Ad-hoc (Giełda)</h3>
                               {teenAdHoc.length === 0 ? (
                                 <p className="text-xs text-[#F7F4EB]/50 py-1">Brak podjętych zadań ekstra.</p>
@@ -695,7 +776,8 @@ export default function App() {
                           )}
                         </div>
 
-                        {(taskTemplate === 'custom' || taskMode === 'extra' || editingTaskId) && (
+                        {/* Moduł edycji dla Zadań Niestandardowych, Giełdy ORAZ Edytowalnych Szablonów */}
+                        {(taskTemplate === 'custom' || taskMode === 'extra' || editingTaskId) ? (
                           <div className="flex flex-col gap-4">
                             <input type="text" placeholder="Opisz zadanie..." value={customTitle} onChange={e => setCustomTitle(e.target.value)} className="bg-white/[0.02] border-b border-white/[0.12] text-[#F7F4EB] placeholder-[#F7F4EB]/40 p-3 text-sm focus:border-white/[0.3] outline-none transition-colors" />
                             
@@ -720,6 +802,25 @@ export default function App() {
                               <div>
                                 <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Termin</label>
                                 <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl p-2.5 text-xs text-[#F7F4EB] outline-none focus:border-white/[0.2]" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          // Nowy moduł Edytowalnych Parametrów Szablonów (Smart Templates)
+                          <div className="bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl flex flex-col gap-3">
+                            <label className="text-[9px] uppercase tracking-widest text-[#F7F4EB]/50">Parametry Szablonu (Edytowalne)</label>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Start</label>
+                                <input type="time" value={templateStart} onChange={e => setTemplateStart(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Koniec</label>
+                                <input type="time" value={templateDue} onChange={e => setTemplateDue(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Waga (pkt)</label>
+                                <input type="number" min="1" max="5" value={templateWeight} onChange={e => setTemplateWeight(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
                               </div>
                             </div>
                           </div>
@@ -911,7 +1012,6 @@ export default function App() {
 
               return (
                 <>
-                  {/* Nowy Baner Push Notifications */}
                   {pushSupported && !isPushEnabled && (
                     <div className="bg-white/[0.06] backdrop-blur-[20px] border border-[#F7F4EB]/20 p-5 rounded-[24px] shadow-lg mb-6 flex flex-col gap-3 transition-all">
                       <div>
