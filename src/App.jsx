@@ -24,7 +24,6 @@ const urlB64ToUint8Array = (base64String) => {
   return outputArray
 }
 
-// Nowy, spersonalizowany komponent Listy Rozwijanej
 const CustomSelect = ({ value, onChange, options, size = 'normal' }) => {
   const [isOpen, setIsOpen] = useState(false)
   const selectedOption = options.find(opt => String(opt.value) === String(value))
@@ -44,11 +43,8 @@ const CustomSelect = ({ value, onChange, options, size = 'normal' }) => {
       
       {isOpen && (
         <>
-          {/* Niewidzialna warstwa pod listą, która zamyka ją po kliknięciu poza obszarem */}
           <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)}></div>
-          
-          {/* Właściwa, "szklana" lista */}
-          <div className="absolute z-[101] w-full mt-1.5 bg-[#120816]/90 backdrop-blur-[20px] border border-white/[0.12] rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] max-h-56 overflow-y-auto">
+          <div className="absolute z-[101] w-full mt-1.5 bg-[#120816]/90 backdrop-blur-[20px] border border-white/[0.12] rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] max-h-56 overflow-y-auto custom-scrollbar">
             <div className="p-1.5 flex flex-col gap-0.5">
               {options.map((opt) => (
                 <div 
@@ -82,7 +78,6 @@ export default function App() {
   const [pushSupported, setPushSupported] = useState(false)
   const [isPushEnabled, setIsPushEnabled] = useState(false)
 
-  // Formularz planowania
   const [isPlannerOpen, setIsPlannerOpen] = useState(false)
   const [taskMode, setTaskMode] = useState('base')
   const [taskTemplate, setTaskTemplate] = useState('dog_morning')
@@ -95,12 +90,10 @@ export default function App() {
   const [dueDate, setDueDate] = useState('')
   const [editingTaskId, setEditingTaskId] = useState(null)
 
-  // Edycja parametrów szablonu "w locie"
   const [templateStart, setTemplateStart] = useState('07:00')
   const [templateDue, setTemplateDue] = useState('09:00')
   const [templateWeight, setTemplateWeight] = useState(1)
 
-  // Filtry, zakładki i interakcje
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all') 
@@ -128,13 +121,6 @@ export default function App() {
 
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
-
-  const appBackgroundStyle = {
-    backgroundImage: 'linear-gradient(rgba(18, 8, 22, 0.65), rgba(18, 8, 22, 0.85)), url(/bg-bubbles.jpeg)',
-    backgroundAttachment: 'fixed',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center'
-  }
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -467,53 +453,6 @@ export default function App() {
       .map(t => new Date(t.due_date).getDate())
   )
 
-  if (isSessionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={appBackgroundStyle}>
-        <div className="w-8 h-8 border-4 border-[#F7F4EB]/20 border-t-[#F7F4EB] rounded-full animate-spin"></div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen text-[#F7F4EB] flex flex-col items-center justify-center p-4 font-sans" style={appBackgroundStyle}>
-        <h1 className="text-3xl font-bold mb-10 tracking-widest text-[#F7F4EB] uppercase">
-          Wspólny Dom
-        </h1>
-        <form onSubmit={handleLogin} className="flex flex-col gap-6 w-full max-w-xs bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-8 rounded-[24px] shadow-2xl">
-          
-          <div className="text-center">
-            <p className="text-xs text-[#F7F4EB]/65 font-bold tracking-widest uppercase mb-3">Wprowadź PIN</p>
-            <input 
-              type="password" 
-              inputMode="numeric" 
-              pattern="[0-9]*"
-              maxLength={4} 
-              value={pin} 
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} 
-              placeholder="••••" 
-              className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] placeholder-[#F7F4EB]/30 p-4 rounded-2xl text-center text-4xl tracking-[0.5em] focus:outline-none focus:border-white/[0.2] focus:bg-white/[0.08] transition-all duration-200 font-mono" 
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={pin.length < 4}
-            className={`w-full p-4 rounded-[16px] font-bold text-sm tracking-wide transition-all duration-200 uppercase ${
-              pin.length === 4 
-                ? 'bg-white/[0.15] hover:bg-white/[0.2] text-[#F7F4EB] border border-white/[0.12] active:scale-[0.97]' 
-                : 'bg-white/[0.03] text-[#F7F4EB]/30 border border-white/[0.05] cursor-not-allowed'
-            }`}
-          >
-            Wejdź
-          </button>
-          {error && <p className="text-[#F7F4EB]/70 text-center text-xs font-semibold">{error}</p>}
-        </form>
-      </div>
-    )
-  }
-
   const HistoryCard = ({ monthKey, data, isParent }) => {
     const isExpanded = expandedMonth === monthKey
     return (
@@ -590,705 +529,780 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen text-[#F7F4EB] pb-12 font-sans" style={appBackgroundStyle}>
-      
-      {toastMessage && (
-        <div className="fixed top-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none transition-all duration-300">
-          <div className="bg-[#120816]/80 backdrop-blur-[20px] border border-white/[0.12] text-[#F7F4EB] px-6 py-3 rounded-full shadow-2xl text-xs font-bold text-center w-auto max-w-sm">
-            {toastMessage}
-          </div>
-        </div>
-      )}
+    <>
+      <style>{`
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+          background: rgba(247, 244, 235, 0.15);
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(247, 244, 235, 0.3);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
 
-      <div className="px-6 py-5 flex justify-between items-center sticky top-0 z-40 bg-white/[0.02] backdrop-blur-[20px] border-b border-white/[0.08]">
-        <div>
-          <h1 className="text-sm font-bold tracking-widest uppercase text-[#F7F4EB]">
-            {user.role === 'parent' ? 'Panel Rodzica' : `Cześć, ${user.name}`}
-          </h1>
-          <p className="text-[10px] text-[#F7F4EB]/65 font-medium tracking-widest mt-1">{currentMonthName}</p>
-        </div>
-        <button 
-          onClick={() => { 
-            setUser(null); 
-            setPin(''); 
-            localStorage.removeItem('wspolnydom_user_id');
-          }} 
-          className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] px-4 py-2 rounded-full transition-all duration-200 active:scale-95 border border-white/[0.08]"
-        >
-          Wyloguj
-        </button>
+      <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <div className="absolute inset-[-10%] bg-[url('/bg-bubbles.jpeg')] bg-cover bg-center bg-fixed blur-[12px] opacity-80 transition-all duration-500 scale-110"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#120816]/60 to-[#120816]/95"></div>
       </div>
 
-      <div className="p-4 max-w-md mx-auto mt-2">
-        {user.role === 'parent' ? (
+      <div className="min-h-screen text-[#F7F4EB] pb-12 font-sans relative z-0">
+        {toastMessage && (
+          <div className="fixed top-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none transition-all duration-300">
+            <div className="bg-[#120816]/80 backdrop-blur-[20px] border border-white/[0.12] text-[#F7F4EB] px-6 py-3 rounded-full shadow-2xl text-xs font-bold text-center w-auto max-w-sm">
+              {toastMessage}
+            </div>
+          </div>
+        )}
+
+        {isSessionLoading ? (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-[#F7F4EB]/20 border-t-[#F7F4EB] rounded-full animate-spin"></div>
+          </div>
+        ) : !user ? (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4">
+            <h1 className="text-3xl font-bold mb-10 tracking-widest text-[#F7F4EB] uppercase">
+              Wspólny Dom
+            </h1>
+            <form onSubmit={handleLogin} className="flex flex-col gap-6 w-full max-w-xs bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-8 rounded-[24px] shadow-2xl">
+              <div className="text-center">
+                <p className="text-xs text-[#F7F4EB]/65 font-bold tracking-widest uppercase mb-3">Wprowadź PIN</p>
+                <input 
+                  type="password" 
+                  inputMode="numeric" 
+                  pattern="[0-9]*"
+                  maxLength={4} 
+                  value={pin} 
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} 
+                  placeholder="••••" 
+                  className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] placeholder-[#F7F4EB]/30 p-4 rounded-2xl text-center text-4xl tracking-[0.5em] focus:outline-none focus:border-white/[0.2] focus:bg-white/[0.08] transition-all duration-200 font-mono" 
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={pin.length < 4}
+                className={`w-full p-4 rounded-[16px] font-bold text-sm tracking-wide transition-all duration-200 uppercase ${
+                  pin.length === 4 
+                    ? 'bg-white/[0.15] hover:bg-white/[0.2] text-[#F7F4EB] border border-white/[0.12] active:scale-[0.97]' 
+                    : 'bg-white/[0.03] text-[#F7F4EB]/30 border border-white/[0.05] cursor-not-allowed'
+                }`}
+              >
+                Wejdź
+              </button>
+              {error && <p className="text-[#F7F4EB]/70 text-center text-xs font-semibold">{error}</p>}
+            </form>
+          </div>
+        ) : (
           <>
-            <div className="flex bg-white/[0.04] p-1 rounded-2xl mb-6 border border-white/[0.08]">
-              <button onClick={() => setParentTab('dashboard')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'dashboard' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Pulpit</button>
-              <button onClick={() => setParentTab('tasks')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'tasks' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Planowanie</button>
-              <button onClick={() => setParentTab('archive')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'archive' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Archiwum</button>
+            <div className="px-6 py-5 flex justify-between items-center sticky top-0 z-40 bg-white/[0.02] backdrop-blur-[20px] border-b border-white/[0.08]">
+              <div>
+                <h1 className="text-sm font-bold tracking-widest uppercase text-[#F7F4EB]">
+                  {user.role === 'parent' ? 'Panel Rodzica' : `Cześć, ${user.name}`}
+                </h1>
+                <p className="text-[10px] text-[#F7F4EB]/65 font-medium tracking-widest mt-1">{currentMonthName}</p>
+              </div>
+              <button 
+                onClick={() => { 
+                  setUser(null); 
+                  setPin(''); 
+                  localStorage.removeItem('wspolnydom_user_id');
+                }} 
+                className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] px-4 py-2 rounded-full transition-all duration-200 active:scale-95 border border-white/[0.08]"
+              >
+                Wyloguj
+              </button>
             </div>
 
-            {parentTab === 'dashboard' && (
-              <div className="transition-opacity duration-300">
-                <div className="flex flex-col gap-4 mb-6">
-                  {teens.map(teen => {
-                    const stats = calculateStats(teen.id, tasks, teen)
-                    const isExpanded = expandedTeenId === teen.id
-                    
-                    const teenBaseTasks = tasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
-                    const evaluatedTasks = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) < now)
-                    const futureTasks = teenBaseTasks.filter(t => t.status === 'pending' && new Date(t.due_date) >= now)
-                    const teenAdHoc = tasks.filter(t => t.assignee_id === teen.id && t.reward > 0)
-                    
-                    const isDetailsExpanded = expandedDetailsTeenId === teen.id
-
-                    const futureBreakdown = {}
-                    futureTasks.forEach(t => {
-                      if (!futureBreakdown[t.title]) futureBreakdown[t.title] = { plannedTasks: 0, plannedPoints: 0, weight: t.weight }
-                      futureBreakdown[t.title].plannedTasks += 1
-                      futureBreakdown[t.title].plannedPoints += t.weight
-                    })
-
-                    const evaluatedBreakdown = {}
-                    evaluatedTasks.forEach(t => {
-                      if (!evaluatedBreakdown[t.title]) evaluatedBreakdown[t.title] = { totalTasks: 0, approvedTasks: 0, totalPoints: 0, earnedPoints: 0, weight: t.weight }
-                      evaluatedBreakdown[t.title].totalTasks += 1
-                      evaluatedBreakdown[t.title].totalPoints += t.weight
-                      if (t.status === 'approved') {
-                        evaluatedBreakdown[t.title].approvedTasks += 1
-                        evaluatedBreakdown[t.title].earnedPoints += t.weight
-                      }
-                    })
-
-                    return (
-                      <div key={teen.id} className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] rounded-[24px] shadow-lg overflow-hidden transition-all duration-200">
-                        <div 
-                          onClick={() => setExpandedTeenId(isExpanded ? null : teen.id)}
-                          className="p-6 cursor-pointer flex justify-between items-center active:scale-[0.99] transition-transform"
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h2 className="font-bold text-base text-[#F7F4EB]">{teen.name}</h2>
-                              <span className="text-[9px] uppercase tracking-widest text-[#F7F4EB]/50 bg-white/[0.05] px-2 py-0.5 rounded-full">
-                                {isExpanded ? 'Zwiń' : 'Szczegóły'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-[#F7F4EB]/65 mt-1">Obecna Skuteczność: <span className="font-bold text-[#F7F4EB]">{stats.successRate}%</span></p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-[#F7F4EB]">{stats.totalPayout.toFixed(0)} zł</div>
-                          </div>
-                        </div>
-
-                        {isExpanded && (
-                          <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-6">
-                            
-                            <div>
-                              <div className="flex justify-between items-end mb-3">
-                                <div>
-                                  <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/90">Wpływające na wynik (%)</h3>
-                                  <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">Zadania przeterminowane lub zakończone</p>
-                                </div>
-                                <button 
-                                  onClick={() => setExpandedDetailsTeenId(isDetailsExpanded ? null : teen.id)}
-                                  className="text-[9px] uppercase tracking-wider font-bold bg-white/[0.08] hover:bg-white/[0.15] text-[#F7F4EB]/80 px-3 py-1.5 rounded-full transition-all"
-                                >
-                                  {isDetailsExpanded ? 'Ukryj Listę' : 'Pokaż Listę'}
-                                </button>
-                              </div>
-
-                              {!isDetailsExpanded ? (
-                                Object.keys(evaluatedBreakdown).length === 0 ? (
-                                  <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań wpływających na wynik w tym miesiącu.</p>
-                                ) : (
-                                  <div className="flex flex-col gap-2">
-                                    {Object.entries(evaluatedBreakdown).map(([title, item]) => (
-                                      <div key={title} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
-                                        <div>
-                                          <p className="text-xs font-semibold text-[#F7F4EB]">{title}</p>
-                                          <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">Wykonanie: {item.approvedTasks} / {item.totalTasks} szt.</p>
-                                        </div>
-                                        <div className="text-right">
-                                          <span className="text-xs font-bold text-[#F7F4EB]">{item.earnedPoints} / {item.totalPoints}</span>
-                                          <span className="text-[10px] text-[#F7F4EB]/50 block">pkt</span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )
-                              ) : (
-                                <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 max-h-[300px] overflow-y-auto">
-                                  {evaluatedTasks.length === 0 ? (
-                                     <p className="text-xs text-[#F7F4EB]/50 py-1 text-center">Brak zadań w tej grupie.</p>
-                                  ) : (
-                                    [...evaluatedTasks].sort((a,b) => new Date(a.due_date) - new Date(b.due_date)).map(t => (
-                                      <div key={t.id} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
-                                        <div className="flex-1 pr-2">
-                                          <p className="text-[11px] font-semibold text-[#F7F4EB] leading-tight">{t.title}</p>
-                                          <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">{new Date(t.due_date).toLocaleDateString('pl-PL')} {new Date(t.due_date).toLocaleTimeString('pl-PL', {hour: '2-digit', minute:'2-digit'})}</p>
-                                        </div>
-                                        <div className="text-right min-w-[70px]">
-                                          <span className={`text-[10px] font-bold ${getStatusClass(t.status)}`}>{translateStatus(t.status)}</span>
-                                        </div>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="pt-4 border-t border-white/[0.06]">
-                              <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-3">Zadania zaplanowane (Później)</h3>
-                              {Object.keys(futureBreakdown).length === 0 ? (
-                                <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań na resztę miesiąca.</p>
-                              ) : (
-                                <div className="flex flex-col gap-2">
-                                  {Object.entries(futureBreakdown).map(([title, item]) => (
-                                    <div key={title} className="flex justify-between items-center py-1 text-xs border-b border-white/[0.04] last:border-0">
-                                      <div>
-                                        <span className="text-[#F7F4EB]/80 font-medium">{title}</span>
-                                        <span className="text-[9px] text-[#F7F4EB]/40 ml-2">({item.plannedTasks} szt.)</span>
-                                      </div>
-                                      <span className="font-semibold text-[#F7F4EB]">{item.plannedPoints} pkt</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="pt-4 border-t border-white/[0.06]">
-                              <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-2">Zadania Ad-hoc (Giełda)</h3>
-                              {teenAdHoc.length === 0 ? (
-                                <p className="text-xs text-[#F7F4EB]/50 py-1">Brak podjętych zadań ekstra.</p>
-                              ) : (
-                                <div className="flex flex-col gap-1.5">
-                                  {teenAdHoc.map(t => (
-                                    <div key={t.id} className="flex justify-between items-center py-1.5 text-xs">
-                                      <span className="text-[#F7F4EB]/80">{t.title}</span>
-                                      <span className="font-semibold text-[#F7F4EB]">+{t.reward} zł ({translateStatus(t.status)})</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
-                  <h2 className="font-bold text-[#F7F4EB] mb-5 text-[11px] tracking-widest uppercase">Budżety miesięczne</h2>
-                  <div className="flex flex-col gap-5">
-                    {teens.map(teen => (
-                      <div key={teen.id} className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">{teen.name} - Baza (zł)</label>
-                          <input type="number" value={budgets[teen.id]?.base ?? teen.base_allowance} onChange={e => handleBudgetChange(teen.id, 'base', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Bonus &gt;90%</label>
-                          <input type="number" value={budgets[teen.id]?.bonus ?? teen.bonus_allowance} onChange={e => handleBudgetChange(teen.id, 'bonus', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
-                        </div>
-                      </div>
-                    ))}
-                    <button onClick={handleSaveBudgets} className="w-full bg-white/[0.1] border border-white/[0.12] hover:bg-white/[0.15] text-[#F7F4EB] text-[11px] uppercase tracking-widest py-4 rounded-[16px] font-bold active:scale-[0.97] transition-all duration-200 mt-2">Zapisz Budżety</button>
-                  </div>
-                </div>
-
-                <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
-                  <h2 className="font-bold text-[#F7F4EB] mb-4 text-[11px] tracking-widest uppercase flex justify-between items-center">
-                    Oczekujące na zatwierdzenie
-                    <span className="bg-white/[0.1] text-[#F7F4EB] text-[10px] px-2 py-1 rounded-lg">{tasks.filter(t => t.status === 'waiting_approval').length}</span>
-                  </h2>
-                  <div className="flex flex-col">
-                    {tasks.filter(t => t.status === 'waiting_approval').map(task => (
-                      <div key={task.id} className="flex justify-between items-center py-4 border-b border-white/[0.08] last:border-0">
-                        <div>
-                          <p className="font-semibold text-sm text-[#F7F4EB]">{task.title} <span className="text-xs text-[#F7F4EB]/50 font-normal">({task.profiles?.name || 'Ktoś'})</span></p>
-                          <p className="text-[10px] text-[#F7F4EB]/65 mt-1">{formatTaskTime(task.start_date, task.due_date)}</p>
-                          {task.reward > 0 && <span className="text-[10px] font-medium text-[#F7F4EB] mt-1 inline-block">Ekstra: {task.reward} zł</span>}
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleParentApproval(task.id, 'approved')} className="bg-white/[0.1] hover:bg-white/[0.15] border border-white/[0.12] text-[#F7F4EB] text-xs px-4 py-2 rounded-[12px] font-bold active:scale-[0.97] transition-all duration-200">Tak</button>
-                          <button onClick={() => handleParentApproval(task.id, 'failed')} className="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[#F7F4EB]/80 text-xs px-4 py-2 rounded-[12px] font-bold active:scale-[0.97] transition-all duration-200">Nie</button>
-                        </div>
-                      </div>
-                    ))}
-                    {tasks.filter(t => t.status === 'waiting_approval').length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-4">Brak zadań do sprawdzenia.</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {parentTab === 'tasks' && (
-              <div className="transition-opacity duration-300">
-                <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] rounded-[24px] shadow-lg mb-6 overflow-hidden transition-all duration-200">
-                  <div 
-                    onClick={() => setIsPlannerOpen(!isPlannerOpen)}
-                    className="p-5 flex justify-between items-center cursor-pointer active:scale-[0.99] transition-transform"
-                  >
-                    <div>
-                      <h2 className="font-bold text-[#F7F4EB] text-xs tracking-widest uppercase">
-                        {editingTaskId ? 'Edytuj zadanie' : 'Zaplanuj zadania'}
-                      </h2>
-                      <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">
-                        {isPlannerOpen ? 'Kliknij, aby zwinąć formularz' : 'Kliknij, aby rozwinąć kreator'}
-                      </p>
-                    </div>
-                    <span className="text-xs text-[#F7F4EB]/60 bg-white/[0.06] px-3 py-1.5 rounded-full border border-white/[0.08]">
-                      {isPlannerOpen ? 'Zwiń' : '+ Otwórz'}
-                    </span>
-                  </div>
-
-                  {isPlannerOpen && (
-                    <div className="px-6 pb-6 pt-2 border-t border-white/[0.08]">
-                      {!editingTaskId && (
-                        <div className="flex bg-white/[0.04] p-1 rounded-2xl mb-5 border border-white/[0.08]">
-                          <button onClick={() => { setTaskMode('base'); setAssigneeId(teens[0]?.id); }} className={`flex-1 py-2 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${taskMode === 'base' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Obowiązki</button>
-                          <button onClick={() => { setTaskMode('extra'); setAssigneeId('all'); }} className={`flex-1 py-2 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${taskMode === 'extra' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Ekstra płatne</button>
-                        </div>
-                      )}
-
-                      <form onSubmit={handleSaveTask} className="flex flex-col gap-5">
-                        <div className="grid grid-cols-2 gap-4">
-                          <CustomSelect 
-                            value={assigneeId} 
-                            onChange={setAssigneeId}
-                            options={[
-                              ...(taskMode === 'extra' ? [{ value: 'all', label: 'Tablica (Giełda)' }] : []),
-                              ...teens.map(t => ({ value: t.id, label: t.name }))
-                            ]}
-                          />
-
-                          {taskMode === 'base' && !editingTaskId && (
-                            <CustomSelect 
-                              value={taskTemplate} 
-                              onChange={setTaskTemplate}
-                              options={Object.keys(TEMPLATES).map(key => ({ value: key, label: TEMPLATES[key].title }))}
-                            />
-                          )}
-                        </div>
-
-                        {(taskTemplate === 'custom' || taskMode === 'extra' || editingTaskId) ? (
-                          <div className="flex flex-col gap-4">
-                            <input type="text" placeholder="Opisz zadanie..." value={customTitle} onChange={e => setCustomTitle(e.target.value)} className="bg-white/[0.02] border-b border-white/[0.12] text-[#F7F4EB] placeholder-[#F7F4EB]/40 p-3 text-sm focus:border-white/[0.3] outline-none transition-colors" />
-                            
-                            {taskMode === 'extra' ? (
-                              <div>
-                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Nagroda finansowa (zł)</label>
-                                <input type="number" min="1" value={bountyReward} onChange={e => setBountyReward(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm font-bold outline-none focus:border-white/[0.2] transition-colors" />
-                              </div>
-                            ) : (
-                              <CustomSelect 
-                                value={customWeight} 
-                                onChange={setCustomWeight}
-                                options={[
-                                  { value: '1', label: '1 pkt (Niska waga)' },
-                                  { value: '2', label: '2 pkt (Średnia waga)' },
-                                  { value: '3', label: '3 pkt (Wysoka waga)' }
-                                ]}
-                              />
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Początek</label>
-                                <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl p-2.5 text-xs text-[#F7F4EB] outline-none focus:border-white/[0.2]" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Termin</label>
-                                <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl p-2.5 text-xs text-[#F7F4EB] outline-none focus:border-white/[0.2]" />
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl flex flex-col gap-3">
-                            <label className="text-[9px] uppercase tracking-widest text-[#F7F4EB]/50">Parametry Szablonu (Edytowalne)</label>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div>
-                                <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Start</label>
-                                <input type="time" value={templateStart} onChange={e => setTemplateStart(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Koniec</label>
-                                <input type="time" value={templateDue} onChange={e => setTemplateDue(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Waga (pkt)</label>
-                                <input type="number" min="1" max="5" value={templateWeight} onChange={e => setTemplateWeight(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {taskMode === 'base' && taskTemplate !== 'custom' && !editingTaskId && (
-                          <div className="mt-2">
-                            <div className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-3">Wybierz dni realizacji ({currentMonthName})</div>
-                            
-                            <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-[10px] font-bold text-[#F7F4EB]/50">
-                              {WEEKDAYS_SHORT.map((wd, i) => (
-                                <span key={wd} className={i >= 5 ? 'text-[#F7F4EB]/30' : ''}>{wd}</span>
-                              ))}
-                            </div>
-
-                            <div className="grid grid-cols-7 gap-1.5 mb-4">
-                              {Array.from({ length: firstDayOffset }).map((_, i) => (
-                                <div key={`offset-${i}`} className="h-9"></div>
-                              ))}
-                              {daysArray.map(day => {
-                                const isWeekend = isWeekendDay(day)
-                                const isSelected = selectedDays.includes(day)
-                                return (
-                                  <button 
-                                    key={day} 
-                                    type="button" 
-                                    onClick={() => toggleDay(day)} 
-                                    className={`h-9 flex items-center justify-center text-xs rounded-xl border font-semibold transition-all duration-200 ${
-                                      isSelected 
-                                        ? 'bg-white/[0.2] text-[#F7F4EB] border-white/[0.3] shadow-sm' 
-                                        : (isWeekend ? 'bg-white/[0.01] text-[#F7F4EB]/35 border-white/[0.03] hover:bg-white/[0.04]' : 'bg-white/[0.03] text-[#F7F4EB]/65 border-white/[0.06] hover:bg-white/[0.08]')
-                                    }`}
-                                  >
-                                    {day}
-                                  </button>
-                                )
-                              })}
-                            </div>
-
-                            <div className="flex gap-3 text-xs">
-                              <button type="button" onClick={selectAllDays} className="bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] text-[#F7F4EB] px-4 py-2 rounded-xl font-medium active:scale-[0.97] transition-all">Wszystkie</button>
-                              <button type="button" onClick={selectWeekdays} className="bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] text-[#F7F4EB] px-4 py-2 rounded-xl font-medium active:scale-[0.97] transition-all">Robocze</button>
-                              <button type="button" onClick={() => setSelectedDays([])} className="text-[#F7F4EB]/40 px-2 py-2 underline text-[11px]">Wyczyść</button>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex gap-3 mt-4">
-                          <button type="submit" className="flex-1 bg-white/[0.12] hover:bg-white/[0.18] border border-white/[0.15] text-[#F7F4EB] p-4 rounded-[16px] font-bold text-[11px] uppercase tracking-widest active:scale-[0.97] transition-all duration-200">
-                            {editingTaskId ? 'Zapisz Zmiany' : (taskMode === 'extra' ? 'Wrzuć na Giełdę' : 'Dodaj Zadania')}
-                          </button>
-                          {editingTaskId && (
-                            <button type="button" onClick={resetForm} className="bg-white/[0.04] border border-white/[0.08] px-6 rounded-[16px] text-[11px] uppercase tracking-widest font-bold active:scale-[0.97] text-[#F7F4EB]/70 hover:bg-white/[0.08] transition-all">
-                              Anuluj
-                            </button>
-                          )}
-                        </div>
-                      </form>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Przegląd zadań</h2>
-                    {calendarFilterDay !== null && (
-                      <button 
-                        onClick={() => setCalendarFilterDay(null)} 
-                        className="text-[10px] uppercase font-bold text-[#F7F4EB]/70 bg-white/[0.08] px-2.5 py-1 rounded-full border border-white/[0.08]"
-                      >
-                        Pokaż cały miesiąc
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-3 mb-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      <CustomSelect 
-                        size="small"
-                        value={filterTeen} 
-                        onChange={setFilterTeen}
-                        options={[
-                          { value: 'all', label: 'Wszyscy wykonawcy' },
-                          ...teens.map(t => ({ value: t.id, label: t.name }))
-                        ]}
-                      />
-                      <CustomSelect 
-                        size="small"
-                        value={filterStatus} 
-                        onChange={setFilterStatus}
-                        options={[
-                          { value: 'all', label: 'Wszystkie statusy' },
-                          { value: 'pending', label: 'Do zrobienia' },
-                          { value: 'waiting_approval', label: 'Czekają' },
-                          { value: 'approved', label: 'Zatwierdzone' },
-                          { value: 'failed', label: 'Niewykonane' }
-                        ]}
-                      />
-                    </div>
-                    <CustomSelect 
-                      size="small"
-                      value={filterType} 
-                      onChange={setFilterType}
-                      options={[
-                        { value: 'all', label: 'Wszystkie typy zadań' },
-                        ...uniqueTaskTypes.map(type => ({ value: type, label: type }))
-                      ]}
-                    />
-                  </div>
-
-                  <div className="bg-white/[0.03] border border-white/[0.06] p-3 rounded-2xl mb-6">
-                    <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#F7F4EB]/40 mb-1.5">
-                      {WEEKDAYS_SHORT.map((wd, i) => (
-                        <span key={wd} className={i >= 5 ? 'text-[#F7F4EB]/25' : ''}>{wd}</span>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1">
-                      {Array.from({ length: firstDayOffset }).map((_, i) => (
-                        <div key={`cal-offset-${i}`} className="h-8"></div>
-                      ))}
-                      {daysArray.map(day => {
-                        const hasTasks = daysWithTasksSet.has(day)
-                        const isSelected = calendarFilterDay === day
-                        const isWeekend = isWeekendDay(day)
-
-                        return (
-                          <button
-                            key={`cal-day-${day}`}
-                            type="button"
-                            onClick={() => setCalendarFilterDay(isSelected ? null : day)}
-                            className={`h-8 flex flex-col items-center justify-center rounded-lg text-xs relative transition-all duration-200 ${
-                              isSelected 
-                                ? 'bg-white/[0.2] text-[#F7F4EB] font-bold border border-white/[0.2]' 
-                                : (isWeekend ? 'text-[#F7F4EB]/40 hover:bg-white/[0.05]' : 'text-[#F7F4EB]/75 hover:bg-white/[0.05]')
-                            }`}
-                          >
-                            <span>{day}</span>
-                            {hasTasks && (
-                              <span className={`w-1 h-1 rounded-full mt-0.5 ${isSelected ? 'bg-[#F7F4EB]' : 'bg-[#F7F4EB]/50'}`}></span>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col">
-                    {filteredParentTasks.length === 0 ? (
-                      <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak zadań w wybranym filtrze.</p>
-                    ) : (
-                      filteredParentTasks.map(task => (
-                        <div key={task.id} className="flex justify-between items-center py-4 border-b border-white/[0.08] last:border-0">
-                          <div className="flex-1 pr-4">
-                            <p className="font-semibold text-sm text-[#F7F4EB]">{task.title} <span className="font-normal text-[11px] text-[#F7F4EB]/50">({task.assignee_id ? task.profiles?.name : 'Giełda'})</span></p>
-                            <p className="text-[10px] text-[#F7F4EB]/65 mt-1 mb-1.5">{formatTaskTime(task.start_date, task.due_date)}</p>
-                            <span className={`text-[11px] font-medium mr-3 ${getStatusClass(task.status)}`}>{translateStatus(task.status)}</span>
-                            {task.reward > 0 ? (
-                              <span className="text-[11px] font-medium text-[#F7F4EB] inline-block">+{task.reward} zł</span>
-                            ) : (
-                              <span className="text-[11px] font-medium text-[#F7F4EB]/65 inline-block">{task.weight} pkt</span>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => handleEditClick(task)} className="text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] px-3 py-2 rounded-[10px] text-xs font-medium transition-all duration-200">Edytuj</button>
-                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#F7F4EB]/60 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] px-3 py-2 rounded-[10px] text-xs font-medium transition-all duration-200">Usuń</button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {parentTab === 'archive' && (
-              <div className="transition-opacity duration-300">
-                <h2 className="font-bold text-[#F7F4EB] mb-5 text-[11px] tracking-widest uppercase px-2">Archiwum (12 miesięcy)</h2>
-                {historyTasks.length === 0 ? (
-                   <p className="text-sm text-[#F7F4EB]/50 text-center mt-10">Brak starszych danych.</p>
-                ) : (
-                  groupTasksByMonth(historyTasks).map(([monthKey, data]) => (
-                    <HistoryCard key={monthKey} monthKey={monthKey} data={data} isParent={true} />
-                  ))
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          // --- WIDOK NASTOLATKA ---
-          <>
-            {(() => {
-              const stats = calculateStats(user.id, tasks, user)
-              const bountyBoardTasks = tasks.filter(t => !t.assignee_id && t.status === 'pending')
-              
-              let displayedTeenTasks = tasks.filter(t => t.assignee_id === user.id)
-              
-              if (teenFilterStatus === 'evaluated') {
-                 displayedTeenTasks = displayedTeenTasks.filter(t => t.reward === 0 && (t.status !== 'pending' || new Date(t.due_date) < now))
-              } else if (teenFilterStatus === 'today') {
-                 displayedTeenTasks = displayedTeenTasks.filter(t => isTaskToday(t.due_date))
-              } else if (teenFilterStatus !== 'all') {
-                 displayedTeenTasks = displayedTeenTasks.filter(t => t.status === teenFilterStatus)
-              }
-
-              return (
+            <div className="p-4 max-w-md mx-auto mt-2">
+              {user.role === 'parent' ? (
                 <>
-                  {pushSupported && !isPushEnabled && (
-                    <div className="bg-white/[0.06] backdrop-blur-[20px] border border-[#F7F4EB]/20 p-5 rounded-[24px] shadow-lg mb-6 flex flex-col gap-3 transition-all">
-                      <div>
-                        <h3 className="font-bold text-[#F7F4EB] text-xs tracking-widest uppercase">Powiadomienia włączone?</h3>
-                        <p className="text-[10px] text-[#F7F4EB]/70 mt-1">Uruchom powiadomienia, żeby aplikacja przypomniała Ci o zbliżającym się końcu czasu na zadania.</p>
-                      </div>
-                      <button 
-                        onClick={subscribeToPush} 
-                        className="w-full bg-[#F7F4EB]/10 hover:bg-[#F7F4EB]/15 text-[#F7F4EB] border border-[#F7F4EB]/20 font-bold py-3 rounded-[14px] text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all duration-200 mt-1"
-                      >
-                        Włącz powiadomienia
-                      </button>
-                    </div>
-                  )}
-
-                  <div 
-                    onClick={handleStatsClick}
-                    className="cursor-pointer bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-7 rounded-[24px] shadow-lg mb-6 active:scale-[0.98] transition-all duration-200"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h2 className="text-[10px] font-bold text-[#F7F4EB]/65 uppercase tracking-widest">Prognoza wypłaty</h2>
-                      <span className="text-[9px] uppercase tracking-widest font-medium bg-white/[0.08] px-2.5 py-1 rounded-full text-[#F7F4EB]/80">Sprawdź ocenę</span>
-                    </div>
-                    <div className="text-5xl font-bold text-[#F7F4EB] mb-6">
-                      {stats.totalPayout.toFixed(0)} <span className="text-2xl font-medium text-[#F7F4EB]/70">zł</span>
-                    </div>
-                    
-                    <div className="w-full bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
-                      <div className="h-full bg-[#F7F4EB] rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.min(stats.successRate, 100)}%` }}></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mt-3 font-medium">
-                      <span>Skuteczność: <span className="text-[#F7F4EB] font-bold">{stats.successRate}%</span></span>
-                      <span>Cel bonusu: &gt;90%</span>
-                    </div>
+                  <div className="flex bg-white/[0.04] p-1 rounded-2xl mb-6 border border-white/[0.08]">
+                    <button onClick={() => setParentTab('dashboard')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'dashboard' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Pulpit</button>
+                    <button onClick={() => setParentTab('tasks')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'tasks' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Planowanie</button>
+                    <button onClick={() => setParentTab('archive')} className={`flex-1 py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${parentTab === 'archive' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Archiwum</button>
                   </div>
 
-                  <div className="flex overflow-x-auto bg-white/[0.04] border border-white/[0.08] p-1 rounded-2xl mb-6 gap-1 hide-scrollbar">
-                    <button onClick={() => setTeenTab('active')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'active' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Zadania</button>
-                    <button onClick={() => setTeenTab('bounty')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'bounty' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>
-                      Giełda {bountyBoardTasks.length > 0 && <span className="bg-[#F7F4EB] text-[#120816] px-1.5 py-0.5 rounded-full text-[9px] ml-1.5">{bountyBoardTasks.length}</span>}
-                    </button>
-                    <button onClick={() => setTeenTab('wallet')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'wallet' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Portfel</button>
-                    <button onClick={() => setTeenTab('archive')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'archive' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Historia</button>
-                  </div>
+                  {parentTab === 'dashboard' && (
+                    <div className="transition-opacity duration-300">
+                      <div className="flex flex-col gap-4 mb-6">
+                        {teens.map(teen => {
+                          const stats = calculateStats(teen.id, tasks, teen)
+                          const isExpanded = expandedTeenId === teen.id
+                          
+                          const teenBaseTasks = tasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
+                          const evaluatedTasks = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) < now)
+                          const futureTasks = teenBaseTasks.filter(t => t.status === 'pending' && new Date(t.due_date) >= now)
+                          const teenAdHoc = tasks.filter(t => t.assignee_id === teen.id && t.reward > 0)
+                          
+                          const isDetailsExpanded = expandedDetailsTeenId === teen.id
 
-                  {teenTab === 'wallet' && (
-                    <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
-                      <h2 className="font-bold text-[#F7F4EB] mb-6 tracking-widest text-[11px] uppercase">Rozliczenie miesiąca</h2>
-                      <div className="flex flex-col text-sm">
-                        <div className="flex justify-between py-4 border-b border-white/[0.06]">
-                          <span className="text-[#F7F4EB]/65">Baza (max)</span><span className="font-bold text-[#F7F4EB]">{stats.maxPoints > 0 ? user.base_allowance : 0} zł</span>
-                        </div>
-                        <div className="flex justify-between py-4 border-b border-white/[0.06]">
-                          <span className="text-[#F7F4EB]/65">Z bazy ({stats.successRate}%)</span><span className="font-bold text-[#F7F4EB]">+{stats.currentBaseEarned.toFixed(0)} zł</span>
-                        </div>
-                        <div className="flex justify-between py-4 border-b border-white/[0.06]">
-                          <span className="text-[#F7F4EB]/65">Premia &gt; 90%</span><span className={`font-bold ${stats.hasBonus ? 'text-[#F7F4EB]' : 'text-[#F7F4EB]/40'}`}>{stats.hasBonus ? `+${stats.bonusAllowance} zł` : '0 zł'}</span>
-                        </div>
-                        <div className="flex justify-between py-4 border-b border-white/[0.06]">
-                          <span className="text-[#F7F4EB]/65">Zadania Ekstra (Giełda)</span><span className="font-bold text-[#F7F4EB]">+{stats.extraEarned.toFixed(0)} zł</span>
-                        </div>
-                        <div className="flex justify-between py-5 mt-2">
-                          <span className="font-bold text-[#F7F4EB] uppercase tracking-wider text-xs">Do wypłaty</span><span className="font-bold text-[#F7F4EB] text-xl">{stats.totalPayout.toFixed(0)} zł</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                          const futureBreakdown = {}
+                          futureTasks.forEach(t => {
+                            if (!futureBreakdown[t.title]) futureBreakdown[t.title] = { plannedTasks: 0, plannedPoints: 0, weight: t.weight }
+                            futureBreakdown[t.title].plannedTasks += 1
+                            futureBreakdown[t.title].plannedPoints += t.weight
+                          })
 
-                  {teenTab === 'bounty' && (
-                    <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
-                      <h2 className="font-bold text-[#F7F4EB] mb-5 tracking-widest text-[11px] uppercase">Tablica Ogłoszeń</h2>
-                      <div className="flex flex-col">
-                        {bountyBoardTasks.length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak ofert. Zajrzyj później.</p>}
-                        {bountyBoardTasks.map(task => (
-                          <div key={task.id} className="py-5 border-b border-white/[0.08] last:border-0 flex flex-col gap-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-bold text-base text-[#F7F4EB]">{task.title}</p>
-                                <p className="text-[10px] text-[#F7F4EB]/65 mt-1">{formatTaskTime(task.start_date, task.due_date)}</p>
-                              </div>
-                              <div className="text-[#F7F4EB] font-bold text-lg">
-                                +{task.reward} zł
-                              </div>
-                            </div>
-                            <button onClick={() => handleClaimBounty(task.id)} className="w-full bg-white/[0.12] hover:bg-white/[0.18] text-[#F7F4EB] border border-white/[0.15] font-bold py-3.5 rounded-[16px] text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all duration-200">
-                              Podejmuję się
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {teenTab === 'active' && (
-                    <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
-                      <div className="mb-5">
-                        <CustomSelect 
-                          size="small"
-                          value={teenFilterStatus} 
-                          onChange={setTeenFilterStatus}
-                          options={[
-                            { value: 'today', label: 'Na dzisiaj' },
-                            { value: 'all', label: 'Wszystkie zadania' },
-                            { value: 'evaluated', label: 'Wpływające na wynik (%)' },
-                            { value: 'pending', label: 'Do zrobienia (przyszłe)' },
-                            { value: 'waiting_approval', label: 'Czekają na akceptację' },
-                            { value: 'approved', label: 'Zatwierdzone' },
-                            { value: 'failed', label: 'Niewykonane' }
-                          ]}
-                        />
-                      </div>
-
-                      <div className="flex flex-col">
-                        {displayedTeenTasks.length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak zadań pasujących do filtra.</p>}
-                        {displayedTeenTasks.map(task => {
-                          const isFuture = task.start_date ? new Date(task.start_date) > new Date() : false
-                          const isBounty = task.reward > 0
+                          const evaluatedBreakdown = {}
+                          evaluatedTasks.forEach(t => {
+                            if (!evaluatedBreakdown[t.title]) evaluatedBreakdown[t.title] = { totalTasks: 0, approvedTasks: 0, totalPoints: 0, earnedPoints: 0, weight: t.weight }
+                            evaluatedBreakdown[t.title].totalTasks += 1
+                            evaluatedBreakdown[t.title].totalPoints += t.weight
+                            if (t.status === 'approved') {
+                              evaluatedBreakdown[t.title].approvedTasks += 1
+                              evaluatedBreakdown[t.title].earnedPoints += t.weight
+                            }
+                          })
 
                           return (
-                            <div key={task.id} className={`py-4 border-b flex justify-between items-center transition-opacity duration-200 ${isFuture ? 'opacity-50 border-white/[0.04]' : 'border-white/[0.08] last:border-0'}`}>
-                              <div className="flex-1 pr-4">
-                                <p className={`font-semibold text-sm ${isFuture ? 'text-[#F7F4EB]/70' : 'text-[#F7F4EB]'}`}>{task.title}</p>
-                                <p className="text-[10px] text-[#F7F4EB]/65 mt-1 mb-1.5">{formatTaskTime(task.start_date, task.due_date)}</p>
-                                <span className={`text-[11px] font-medium mr-3 ${getStatusClass(task.status)}`}>{translateStatus(task.status)}</span>
-                                {isBounty ? (
-                                  <span className="text-[11px] font-medium text-[#F7F4EB] inline-block">+{task.reward} zł</span>
-                                ) : (
-                                  <span className="text-[11px] font-medium text-[#F7F4EB]/65 inline-block">{task.weight} pkt</span>
-                                )}
+                            <div key={teen.id} className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] rounded-[24px] shadow-lg overflow-hidden transition-all duration-200">
+                              <div 
+                                onClick={() => setExpandedTeenId(isExpanded ? null : teen.id)}
+                                className="p-6 cursor-pointer flex justify-between items-center active:scale-[0.99] transition-transform"
+                              >
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h2 className="font-bold text-base text-[#F7F4EB]">{teen.name}</h2>
+                                    <span className="text-[9px] uppercase tracking-widest text-[#F7F4EB]/50 bg-white/[0.05] px-2 py-0.5 rounded-full">
+                                      {isExpanded ? 'Zwiń' : 'Szczegóły'}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-[#F7F4EB]/65 mt-1">Obecna Skuteczność: <span className="font-bold text-[#F7F4EB]">{stats.successRate}%</span></p>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-[#F7F4EB]">{stats.totalPayout.toFixed(0)} zł</div>
+                                </div>
                               </div>
-                              <div>
-                                {task.status === 'pending' && (
-                                  <button 
-                                    onClick={() => { if (isFuture) showToast(`Aktywne od: ${formatFutureTime(task.start_date)}`); else handleTeenAction(task.id, 'waiting_approval'); }}
-                                    className={`text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-[12px] font-bold transition-all duration-200 ${isFuture ? 'bg-white/[0.04] text-[#F7F4EB]/50 border border-white/[0.08]' : 'bg-white/[0.12] hover:bg-white/[0.18] text-[#F7F4EB] border border-white/[0.15] active:scale-[0.95]'}`}
-                                  >
-                                    {isFuture ? 'Za wcześnie' : 'Zrobione'}
-                                  </button>
-                                )}
-                              </div>
+
+                              {isExpanded && (
+                                <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-6">
+                                  
+                                  <div>
+                                    <div className="flex justify-between items-end mb-3">
+                                      <div>
+                                        <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/90">Wpływające na wynik (%)</h3>
+                                        <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">Zadania przeterminowane lub zakończone</p>
+                                      </div>
+                                      <button 
+                                        onClick={() => setExpandedDetailsTeenId(isDetailsExpanded ? null : teen.id)}
+                                        className="text-[9px] uppercase tracking-wider font-bold bg-white/[0.08] hover:bg-white/[0.15] text-[#F7F4EB]/80 px-3 py-1.5 rounded-full transition-all"
+                                      >
+                                        {isDetailsExpanded ? 'Ukryj Listę' : 'Pokaż Listę'}
+                                      </button>
+                                    </div>
+
+                                    {!isDetailsExpanded ? (
+                                      Object.keys(evaluatedBreakdown).length === 0 ? (
+                                        <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań wpływających na wynik w tym miesiącu.</p>
+                                      ) : (
+                                        <div className="flex flex-col gap-2">
+                                          {Object.entries(evaluatedBreakdown).map(([title, item]) => (
+                                            <div key={title} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                                              <div>
+                                                <p className="text-xs font-semibold text-[#F7F4EB]">{title}</p>
+                                                <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">Wykonanie: {item.approvedTasks} / {item.totalTasks} szt.</p>
+                                              </div>
+                                              <div className="text-right">
+                                                <span className="text-xs font-bold text-[#F7F4EB]">{item.earnedPoints} / {item.totalPoints}</span>
+                                                <span className="text-[10px] text-[#F7F4EB]/50 block">pkt</span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )
+                                    ) : (
+                                      <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {evaluatedTasks.length === 0 ? (
+                                           <p className="text-xs text-[#F7F4EB]/50 py-1 text-center">Brak zadań w tej grupie.</p>
+                                        ) : (
+                                          [...evaluatedTasks].sort((a,b) => new Date(a.due_date) - new Date(b.due_date)).map(t => (
+                                            <div key={t.id} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                                              <div className="flex-1 pr-2">
+                                                <p className="text-[11px] font-semibold text-[#F7F4EB] leading-tight">{t.title}</p>
+                                                <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">{new Date(t.due_date).toLocaleDateString('pl-PL')} {new Date(t.due_date).toLocaleTimeString('pl-PL', {hour: '2-digit', minute:'2-digit'})}</p>
+                                              </div>
+                                              <div className="text-right min-w-[70px]">
+                                                <span className={`text-[10px] font-bold ${getStatusClass(t.status)}`}>{translateStatus(t.status)}</span>
+                                              </div>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="pt-4 border-t border-white/[0.06]">
+                                    <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-3">Zadania zaplanowane (Później)</h3>
+                                    {Object.keys(futureBreakdown).length === 0 ? (
+                                      <p className="text-xs text-[#F7F4EB]/50 py-1">Brak zadań na resztę miesiąca.</p>
+                                    ) : (
+                                      <div className="flex flex-col gap-2">
+                                        {Object.entries(futureBreakdown).map(([title, item]) => (
+                                          <div key={title} className="flex justify-between items-center py-1 text-xs border-b border-white/[0.04] last:border-0">
+                                            <div>
+                                              <span className="text-[#F7F4EB]/80 font-medium">{title}</span>
+                                              <span className="text-[9px] text-[#F7F4EB]/40 ml-2">({item.plannedTasks} szt.)</span>
+                                            </div>
+                                            <span className="font-semibold text-[#F7F4EB]">{item.plannedPoints} pkt</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="pt-4 border-t border-white/[0.06]">
+                                    <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/50 mb-2">Zadania Ad-hoc (Giełda)</h3>
+                                    {teenAdHoc.length === 0 ? (
+                                      <p className="text-xs text-[#F7F4EB]/50 py-1">Brak podjętych zadań ekstra.</p>
+                                    ) : (
+                                      <div className="flex flex-col gap-1.5">
+                                        {teenAdHoc.map(t => (
+                                          <div key={t.id} className="flex justify-between items-center py-1.5 text-xs">
+                                            <span className="text-[#F7F4EB]/80">{t.title}</span>
+                                            <span className="font-semibold text-[#F7F4EB]">+{t.reward} zł ({translateStatus(t.status)})</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )
                         })}
                       </div>
+
+                      <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
+                        <h2 className="font-bold text-[#F7F4EB] mb-5 text-[11px] tracking-widest uppercase">Budżety miesięczne</h2>
+                        <div className="flex flex-col gap-5">
+                          {teens.map(teen => (
+                            <div key={teen.id} className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">{teen.name} - Baza (zł)</label>
+                                <input type="number" value={budgets[teen.id]?.base ?? teen.base_allowance} onChange={e => handleBudgetChange(teen.id, 'base', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Bonus &gt;90%</label>
+                                <input type="number" value={budgets[teen.id]?.bonus ?? teen.bonus_allowance} onChange={e => handleBudgetChange(teen.id, 'bonus', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
+                              </div>
+                            </div>
+                          ))}
+                          <button onClick={handleSaveBudgets} className="w-full bg-white/[0.1] border border-white/[0.12] hover:bg-white/[0.15] text-[#F7F4EB] text-[11px] uppercase tracking-widest py-4 rounded-[16px] font-bold active:scale-[0.97] transition-all duration-200 mt-2">Zapisz Budżety</button>
+                        </div>
+                      </div>
+
+                      <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
+                        <h2 className="font-bold text-[#F7F4EB] mb-4 text-[11px] tracking-widest uppercase flex justify-between items-center">
+                          Oczekujące na zatwierdzenie
+                          <span className="bg-white/[0.1] text-[#F7F4EB] text-[10px] px-2 py-1 rounded-lg">{tasks.filter(t => t.status === 'waiting_approval').length}</span>
+                        </h2>
+                        <div className="flex flex-col">
+                          {tasks.filter(t => t.status === 'waiting_approval').map(task => (
+                            <div key={task.id} className="flex justify-between items-center py-4 border-b border-white/[0.08] last:border-0">
+                              <div>
+                                <p className="font-semibold text-sm text-[#F7F4EB]">{task.title} <span className="text-xs text-[#F7F4EB]/50 font-normal">({task.profiles?.name || 'Ktoś'})</span></p>
+                                <p className="text-[10px] text-[#F7F4EB]/65 mt-1">{formatTaskTime(task.start_date, task.due_date)}</p>
+                                {task.reward > 0 && <span className="text-[10px] font-medium text-[#F7F4EB] mt-1 inline-block">Ekstra: {task.reward} zł</span>}
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={() => handleParentApproval(task.id, 'approved')} className="bg-white/[0.1] hover:bg-white/[0.15] border border-white/[0.12] text-[#F7F4EB] text-xs px-4 py-2 rounded-[12px] font-bold active:scale-[0.97] transition-all duration-200">Tak</button>
+                                <button onClick={() => handleParentApproval(task.id, 'failed')} className="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[#F7F4EB]/80 text-xs px-4 py-2 rounded-[12px] font-bold active:scale-[0.97] transition-all duration-200">Nie</button>
+                              </div>
+                            </div>
+                          ))}
+                          {tasks.filter(t => t.status === 'waiting_approval').length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-4">Brak zadań do sprawdzenia.</p>}
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {teenTab === 'archive' && (
+                  {parentTab === 'tasks' && (
                     <div className="transition-opacity duration-300">
-                       {historyTasks.length === 0 ? (
+                      <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] rounded-[24px] shadow-lg mb-6 overflow-hidden transition-all duration-200">
+                        <div 
+                          onClick={() => setIsPlannerOpen(!isPlannerOpen)}
+                          className="p-5 flex justify-between items-center cursor-pointer active:scale-[0.99] transition-transform"
+                        >
+                          <div>
+                            <h2 className="font-bold text-[#F7F4EB] text-xs tracking-widest uppercase">
+                              {editingTaskId ? 'Edytuj zadanie' : 'Zaplanuj zadania'}
+                            </h2>
+                            <p className="text-[10px] text-[#F7F4EB]/60 mt-0.5">
+                              {isPlannerOpen ? 'Kliknij, aby zwinąć formularz' : 'Kliknij, aby rozwinąć kreator'}
+                            </p>
+                          </div>
+                          <span className="text-xs text-[#F7F4EB]/60 bg-white/[0.06] px-3 py-1.5 rounded-full border border-white/[0.08]">
+                            {isPlannerOpen ? 'Zwiń' : '+ Otwórz'}
+                          </span>
+                        </div>
+
+                        {isPlannerOpen && (
+                          <div className="px-6 pb-6 pt-2 border-t border-white/[0.08]">
+                            {!editingTaskId && (
+                              <div className="flex bg-white/[0.04] p-1 rounded-2xl mb-5 border border-white/[0.08]">
+                                <button onClick={() => { setTaskMode('base'); setAssigneeId(teens[0]?.id); }} className={`flex-1 py-2 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${taskMode === 'base' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Obowiązki</button>
+                                <button onClick={() => { setTaskMode('extra'); setAssigneeId('all'); }} className={`flex-1 py-2 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${taskMode === 'extra' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Ekstra płatne</button>
+                              </div>
+                            )}
+
+                            <form onSubmit={handleSaveTask} className="flex flex-col gap-5">
+                              <div className="flex flex-col gap-4">
+                                <CustomSelect 
+                                  value={assigneeId} 
+                                  onChange={setAssigneeId}
+                                  options={[
+                                    ...(taskMode === 'extra' ? [{ value: 'all', label: 'Tablica (Giełda)' }] : []),
+                                    ...teens.map(t => ({ value: t.id, label: t.name }))
+                                  ]}
+                                />
+
+                                {taskMode === 'base' && !editingTaskId && (
+                                  <CustomSelect 
+                                    value={taskTemplate} 
+                                    onChange={setTaskTemplate}
+                                    options={Object.keys(TEMPLATES).map(key => ({ value: key, label: TEMPLATES[key].title }))}
+                                  />
+                                )}
+                              </div>
+
+                              {(taskTemplate === 'custom' || taskMode === 'extra' || editingTaskId) ? (
+                                <div className="flex flex-col gap-4">
+                                  <input type="text" placeholder="Opisz zadanie..." value={customTitle} onChange={e => setCustomTitle(e.target.value)} className="bg-white/[0.02] border-b border-white/[0.12] text-[#F7F4EB] placeholder-[#F7F4EB]/40 p-3 text-sm focus:border-white/[0.3] outline-none transition-colors" />
+                                  
+                                  {taskMode === 'extra' ? (
+                                    <div>
+                                      <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Nagroda finansowa (zł)</label>
+                                      <input type="number" min="1" value={bountyReward} onChange={e => setBountyReward(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm font-bold outline-none focus:border-white/[0.2] transition-colors" />
+                                    </div>
+                                  ) : (
+                                    <CustomSelect 
+                                      value={customWeight} 
+                                      onChange={setCustomWeight}
+                                      options={[
+                                        { value: '1', label: '1 pkt (Niska waga)' },
+                                        { value: '2', label: '2 pkt (Średnia waga)' },
+                                        { value: '3', label: '3 pkt (Wysoka waga)' }
+                                      ]}
+                                    />
+                                  )}
+
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Początek</label>
+                                      <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl p-2.5 text-xs text-[#F7F4EB] outline-none focus:border-white/[0.2] custom-scrollbar" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Termin</label>
+                                      <input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl p-2.5 text-xs text-[#F7F4EB] outline-none focus:border-white/[0.2] custom-scrollbar" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl flex flex-col gap-3">
+                                  <label className="text-[9px] uppercase tracking-widest text-[#F7F4EB]/50">Parametry Szablonu (Edytowalne)</label>
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                      <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Start</label>
+                                      <input type="time" value={templateStart} onChange={e => setTemplateStart(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Koniec</label>
+                                      <input type="time" value={templateDue} onChange={e => setTemplateDue(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-[#F7F4EB]/65 mb-1.5 block">Waga (pkt)</label>
+                                      <input type="number" min="1" max="5" value={templateWeight} onChange={e => setTemplateWeight(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg p-2 text-xs text-[#F7F4EB] outline-none" />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {taskMode === 'base' && taskTemplate !== 'custom' && !editingTaskId && (
+                                <div className="mt-2">
+                                  <div className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-3">Wybierz dni realizacji ({currentMonthName})</div>
+                                  
+                                  <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-[10px] font-bold text-[#F7F4EB]/50">
+                                    {WEEKDAYS_SHORT.map((wd, i) => (
+                                      <span key={wd} className={i >= 5 ? 'text-[#F7F4EB]/30' : ''}>{wd}</span>
+                                    ))}
+                                  </div>
+
+                                  <div className="grid grid-cols-7 gap-1.5 mb-4">
+                                    {Array.from({ length: firstDayOffset }).map((_, i) => (
+                                      <div key={`offset-${i}`} className="h-9"></div>
+                                    ))}
+                                    {daysArray.map(day => {
+                                      const isWeekend = isWeekendDay(day)
+                                      const isSelected = selectedDays.includes(day)
+                                      return (
+                                        <button 
+                                          key={day} 
+                                          type="button" 
+                                          onClick={() => toggleDay(day)} 
+                                          className={`h-9 flex items-center justify-center text-xs rounded-xl border font-semibold transition-all duration-200 ${
+                                            isSelected 
+                                              ? 'bg-white/[0.2] text-[#F7F4EB] border-white/[0.3] shadow-sm' 
+                                              : (isWeekend ? 'bg-white/[0.01] text-[#F7F4EB]/35 border-white/[0.03] hover:bg-white/[0.04]' : 'bg-white/[0.03] text-[#F7F4EB]/65 border-white/[0.06] hover:bg-white/[0.08]')
+                                          }`}
+                                        >
+                                          {day}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+
+                                  <div className="flex gap-3 text-xs">
+                                    <button type="button" onClick={selectAllDays} className="bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] text-[#F7F4EB] px-4 py-2 rounded-xl font-medium active:scale-[0.97] transition-all">Wszystkie</button>
+                                    <button type="button" onClick={selectWeekdays} className="bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] text-[#F7F4EB] px-4 py-2 rounded-xl font-medium active:scale-[0.97] transition-all">Robocze</button>
+                                    <button type="button" onClick={() => setSelectedDays([])} className="text-[#F7F4EB]/40 px-2 py-2 underline text-[11px]">Wyczyść</button>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex gap-3 mt-4">
+                                <button type="submit" className="flex-1 bg-white/[0.12] hover:bg-white/[0.18] border border-white/[0.15] text-[#F7F4EB] p-4 rounded-[16px] font-bold text-[11px] uppercase tracking-widest active:scale-[0.97] transition-all duration-200">
+                                  {editingTaskId ? 'Zapisz Zmiany' : (taskMode === 'extra' ? 'Wrzuć na Giełdę' : 'Dodaj Zadania')}
+                                </button>
+                                {editingTaskId && (
+                                  <button type="button" onClick={resetForm} className="bg-white/[0.04] border border-white/[0.08] px-6 rounded-[16px] text-[11px] uppercase tracking-widest font-bold active:scale-[0.97] text-[#F7F4EB]/70 hover:bg-white/[0.08] transition-all">
+                                    Anuluj
+                                  </button>
+                                )}
+                              </div>
+                            </form>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                          <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Przegląd zadań</h2>
+                          {calendarFilterDay !== null && (
+                            <button 
+                              onClick={() => setCalendarFilterDay(null)} 
+                              className="text-[10px] uppercase font-bold text-[#F7F4EB]/70 bg-white/[0.08] px-2.5 py-1 rounded-full border border-white/[0.08]"
+                            >
+                              Pokaż cały miesiąc
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col gap-3 mb-5">
+                          <div className="grid grid-cols-2 gap-3">
+                            <CustomSelect 
+                              size="small"
+                              value={filterTeen} 
+                              onChange={setFilterTeen}
+                              options={[
+                                { value: 'all', label: 'Wszyscy wykonawcy' },
+                                ...teens.map(t => ({ value: t.id, label: t.name }))
+                              ]}
+                            />
+                            <CustomSelect 
+                              size="small"
+                              value={filterStatus} 
+                              onChange={setFilterStatus}
+                              options={[
+                                { value: 'all', label: 'Wszystkie statusy' },
+                                { value: 'pending', label: 'Do zrobienia' },
+                                { value: 'waiting_approval', label: 'Czekają' },
+                                { value: 'approved', label: 'Zatwierdzone' },
+                                { value: 'failed', label: 'Niewykonane' }
+                              ]}
+                            />
+                          </div>
+                          <CustomSelect 
+                            size="small"
+                            value={filterType} 
+                            onChange={setFilterType}
+                            options={[
+                              { value: 'all', label: 'Wszystkie typy zadań' },
+                              ...uniqueTaskTypes.map(type => ({ value: type, label: type }))
+                            ]}
+                          />
+                        </div>
+
+                        <div className="bg-white/[0.03] border border-white/[0.06] p-3 rounded-2xl mb-6">
+                          <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#F7F4EB]/40 mb-1.5">
+                            {WEEKDAYS_SHORT.map((wd, i) => (
+                              <span key={wd} className={i >= 5 ? 'text-[#F7F4EB]/25' : ''}>{wd}</span>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-7 gap-1">
+                            {Array.from({ length: firstDayOffset }).map((_, i) => (
+                              <div key={`cal-offset-${i}`} className="h-8"></div>
+                            ))}
+                            {daysArray.map(day => {
+                              const hasTasks = daysWithTasksSet.has(day)
+                              const isSelected = calendarFilterDay === day
+                              const isWeekend = isWeekendDay(day)
+
+                              return (
+                                <button
+                                  key={`cal-day-${day}`}
+                                  type="button"
+                                  onClick={() => setCalendarFilterDay(isSelected ? null : day)}
+                                  className={`h-8 flex flex-col items-center justify-center rounded-lg text-xs relative transition-all duration-200 ${
+                                    isSelected 
+                                      ? 'bg-white/[0.2] text-[#F7F4EB] font-bold border border-white/[0.2]' 
+                                      : (isWeekend ? 'text-[#F7F4EB]/40 hover:bg-white/[0.05]' : 'text-[#F7F4EB]/75 hover:bg-white/[0.05]')
+                                  }`}
+                                >
+                                  <span>{day}</span>
+                                  {hasTasks && (
+                                    <span className={`w-1 h-1 rounded-full mt-0.5 ${isSelected ? 'bg-[#F7F4EB]' : 'bg-[#F7F4EB]/50'}`}></span>
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col">
+                          {filteredParentTasks.length === 0 ? (
+                            <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak zadań w wybranym filtrze.</p>
+                          ) : (
+                            filteredParentTasks.map(task => (
+                              <div key={task.id} className="flex justify-between items-center py-4 border-b border-white/[0.08] last:border-0">
+                                <div className="flex-1 pr-4">
+                                  <p className="font-semibold text-sm text-[#F7F4EB]">{task.title} <span className="font-normal text-[11px] text-[#F7F4EB]/50">({task.assignee_id ? task.profiles?.name : 'Giełda'})</span></p>
+                                  <p className="text-[10px] text-[#F7F4EB]/65 mt-1 mb-1.5">{formatTaskTime(task.start_date, task.due_date)}</p>
+                                  <span className={`text-[11px] font-medium mr-3 ${getStatusClass(task.status)}`}>{translateStatus(task.status)}</span>
+                                  {task.reward > 0 ? (
+                                    <span className="text-[11px] font-medium text-[#F7F4EB] inline-block">+{task.reward} zł</span>
+                                  ) : (
+                                    <span className="text-[11px] font-medium text-[#F7F4EB]/65 inline-block">{task.weight} pkt</span>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleEditClick(task)} className="text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] px-3 py-2 rounded-[10px] text-xs font-medium transition-all duration-200">Edytuj</button>
+                                  <button onClick={() => handleDeleteTask(task.id)} className="text-[#F7F4EB]/60 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] px-3 py-2 rounded-[10px] text-xs font-medium transition-all duration-200">Usuń</button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {parentTab === 'archive' && (
+                    <div className="transition-opacity duration-300">
+                      <h2 className="font-bold text-[#F7F4EB] mb-5 text-[11px] tracking-widest uppercase px-2">Archiwum (12 miesięcy)</h2>
+                      {historyTasks.length === 0 ? (
                          <p className="text-sm text-[#F7F4EB]/50 text-center mt-10">Brak starszych danych.</p>
                       ) : (
                         groupTasksByMonth(historyTasks).map(([monthKey, data]) => (
-                          <HistoryCard key={monthKey} monthKey={monthKey} data={data} isParent={false} />
+                          <HistoryCard key={monthKey} monthKey={monthKey} data={data} isParent={true} />
                         ))
                       )}
                     </div>
                   )}
                 </>
-              )
-            })()}
+              ) : (
+                // --- WIDOK NASTOLATKA ---
+                <>
+                  {(() => {
+                    const stats = calculateStats(user.id, tasks, user)
+                    const bountyBoardTasks = tasks.filter(t => !t.assignee_id && t.status === 'pending')
+                    
+                    let displayedTeenTasks = tasks.filter(t => t.assignee_id === user.id)
+                    
+                    if (teenFilterStatus === 'evaluated') {
+                       displayedTeenTasks = displayedTeenTasks.filter(t => t.reward === 0 && (t.status !== 'pending' || new Date(t.due_date) < now))
+                    } else if (teenFilterStatus === 'today') {
+                       displayedTeenTasks = displayedTeenTasks.filter(t => isTaskToday(t.due_date))
+                    } else if (teenFilterStatus !== 'all') {
+                       displayedTeenTasks = displayedTeenTasks.filter(t => t.status === teenFilterStatus)
+                    }
+
+                    return (
+                      <>
+                        {pushSupported && !isPushEnabled && (
+                          <div className="bg-white/[0.06] backdrop-blur-[20px] border border-[#F7F4EB]/20 p-5 rounded-[24px] shadow-lg mb-6 flex flex-col gap-3 transition-all">
+                            <div>
+                              <h3 className="font-bold text-[#F7F4EB] text-xs tracking-widest uppercase">Powiadomienia włączone?</h3>
+                              <p className="text-[10px] text-[#F7F4EB]/70 mt-1">Uruchom powiadomienia, żeby aplikacja przypomniała Ci o zbliżającym się końcu czasu na zadania.</p>
+                            </div>
+                            <button 
+                              onClick={subscribeToPush} 
+                              className="w-full bg-[#F7F4EB]/10 hover:bg-[#F7F4EB]/15 text-[#F7F4EB] border border-[#F7F4EB]/20 font-bold py-3 rounded-[14px] text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all duration-200 mt-1"
+                            >
+                              Włącz powiadomienia
+                            </button>
+                          </div>
+                        )}
+
+                        <div 
+                          onClick={handleStatsClick}
+                          className="cursor-pointer bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-7 rounded-[24px] shadow-lg mb-6 active:scale-[0.98] transition-all duration-200"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h2 className="text-[10px] font-bold text-[#F7F4EB]/65 uppercase tracking-widest">Prognoza wypłaty</h2>
+                            <span className="text-[9px] uppercase tracking-widest font-medium bg-white/[0.08] px-2.5 py-1 rounded-full text-[#F7F4EB]/80">Sprawdź ocenę</span>
+                          </div>
+                          <div className="text-5xl font-bold text-[#F7F4EB] mb-6">
+                            {stats.totalPayout.toFixed(0)} <span className="text-2xl font-medium text-[#F7F4EB]/70">zł</span>
+                          </div>
+                          
+                          <div className="w-full bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
+                            <div className="h-full bg-[#F7F4EB] rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.min(stats.successRate, 100)}%` }}></div>
+                          </div>
+                          <div className="flex justify-between text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mt-3 font-medium">
+                            <span>Skuteczność: <span className="text-[#F7F4EB] font-bold">{stats.successRate}%</span></span>
+                            <span>Cel bonusu: &gt;90%</span>
+                          </div>
+                        </div>
+
+                        <div className="flex overflow-x-auto bg-white/[0.04] border border-white/[0.08] p-1 rounded-2xl mb-6 gap-1 hide-scrollbar">
+                          <button onClick={() => setTeenTab('active')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'active' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Zadania</button>
+                          <button onClick={() => setTeenTab('bounty')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'bounty' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>
+                            Giełda {bountyBoardTasks.length > 0 && <span className="bg-[#F7F4EB] text-[#120816] px-1.5 py-0.5 rounded-full text-[9px] ml-1.5">{bountyBoardTasks.length}</span>}
+                          </button>
+                          <button onClick={() => setTeenTab('wallet')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'wallet' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Portfel</button>
+                          <button onClick={() => setTeenTab('archive')} className={`flex-1 min-w-[70px] py-2.5 text-[11px] uppercase tracking-wider font-bold rounded-[14px] transition-all duration-200 ${teenTab === 'archive' ? 'bg-white/[0.12] text-[#F7F4EB] shadow-sm backdrop-blur-md' : 'text-[#F7F4EB]/60 hover:bg-white/[0.05]'}`}>Historia</button>
+                        </div>
+
+                        {teenTab === 'wallet' && (
+                          <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
+                            <h2 className="font-bold text-[#F7F4EB] mb-6 tracking-widest text-[11px] uppercase">Rozliczenie miesiąca</h2>
+                            <div className="flex flex-col text-sm">
+                              <div className="flex justify-between py-4 border-b border-white/[0.06]">
+                                <span className="text-[#F7F4EB]/65">Baza (max)</span><span className="font-bold text-[#F7F4EB]">{stats.maxPoints > 0 ? user.base_allowance : 0} zł</span>
+                              </div>
+                              <div className="flex justify-between py-4 border-b border-white/[0.06]">
+                                <span className="text-[#F7F4EB]/65">Z bazy ({stats.successRate}%)</span><span className="font-bold text-[#F7F4EB]">+{stats.currentBaseEarned.toFixed(0)} zł</span>
+                              </div>
+                              <div className="flex justify-between py-4 border-b border-white/[0.06]">
+                                <span className="text-[#F7F4EB]/65">Premia &gt; 90%</span><span className={`font-bold ${stats.hasBonus ? 'text-[#F7F4EB]' : 'text-[#F7F4EB]/40'}`}>{stats.hasBonus ? `+${stats.bonusAllowance} zł` : '0 zł'}</span>
+                              </div>
+                              <div className="flex justify-between py-4 border-b border-white/[0.06]">
+                                <span className="text-[#F7F4EB]/65">Zadania Ekstra (Giełda)</span><span className="font-bold text-[#F7F4EB]">+{stats.extraEarned.toFixed(0)} zł</span>
+                              </div>
+                              <div className="flex justify-between py-5 mt-2">
+                                <span className="font-bold text-[#F7F4EB] uppercase tracking-wider text-xs">Do wypłaty</span><span className="font-bold text-[#F7F4EB] text-xl">{stats.totalPayout.toFixed(0)} zł</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {teenTab === 'bounty' && (
+                          <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
+                            <h2 className="font-bold text-[#F7F4EB] mb-5 tracking-widest text-[11px] uppercase">Tablica Ogłoszeń</h2>
+                            <div className="flex flex-col">
+                              {bountyBoardTasks.length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak ofert. Zajrzyj później.</p>}
+                              {bountyBoardTasks.map(task => (
+                                <div key={task.id} className="py-5 border-b border-white/[0.08] last:border-0 flex flex-col gap-4">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-bold text-base text-[#F7F4EB]">{task.title}</p>
+                                      <p className="text-[10px] text-[#F7F4EB]/65 mt-1">{formatTaskTime(task.start_date, task.due_date)}</p>
+                                    </div>
+                                    <div className="text-[#F7F4EB] font-bold text-lg">
+                                      +{task.reward} zł
+                                    </div>
+                                  </div>
+                                  <button onClick={() => handleClaimBounty(task.id)} className="w-full bg-white/[0.12] hover:bg-white/[0.18] text-[#F7F4EB] border border-white/[0.15] font-bold py-3.5 rounded-[16px] text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all duration-200">
+                                    Podejmuję się
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {teenTab === 'active' && (
+                          <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
+                            <div className="mb-5">
+                              <CustomSelect 
+                                size="small"
+                                value={teenFilterStatus} 
+                                onChange={setTeenFilterStatus}
+                                options={[
+                                  { value: 'today', label: 'Na dzisiaj' },
+                                  { value: 'all', label: 'Wszystkie zadania' },
+                                  { value: 'evaluated', label: 'Wpływające na wynik (%)' },
+                                  { value: 'pending', label: 'Do zrobienia (przyszłe)' },
+                                  { value: 'waiting_approval', label: 'Czekają na akceptację' },
+                                  { value: 'approved', label: 'Zatwierdzone' },
+                                  { value: 'failed', label: 'Niewykonane' }
+                                ]}
+                              />
+                            </div>
+
+                            <div className="flex flex-col">
+                              {displayedTeenTasks.length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-6">Brak zadań pasujących do filtra.</p>}
+                              {displayedTeenTasks.map(task => {
+                                const isFuture = task.start_date ? new Date(task.start_date) > new Date() : false
+                                const isBounty = task.reward > 0
+
+                                return (
+                                  <div key={task.id} className={`py-4 border-b flex justify-between items-center transition-opacity duration-200 ${isFuture ? 'opacity-50 border-white/[0.04]' : 'border-white/[0.08] last:border-0'}`}>
+                                    <div className="flex-1 pr-4">
+                                      <p className={`font-semibold text-sm ${isFuture ? 'text-[#F7F4EB]/70' : 'text-[#F7F4EB]'}`}>{task.title}</p>
+                                      <p className="text-[10px] text-[#F7F4EB]/65 mt-1 mb-1.5">{formatTaskTime(task.start_date, task.due_date)}</p>
+                                      <span className={`text-[11px] font-medium mr-3 ${getStatusClass(task.status)}`}>{translateStatus(task.status)}</span>
+                                      {isBounty ? (
+                                        <span className="text-[11px] font-medium text-[#F7F4EB] inline-block">+{task.reward} zł</span>
+                                      ) : (
+                                        <span className="text-[11px] font-medium text-[#F7F4EB]/65 inline-block">{task.weight} pkt</span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      {task.status === 'pending' && (
+                                        <button 
+                                          onClick={() => { if (isFuture) showToast(`Aktywne od: ${formatFutureTime(task.start_date)}`); else handleTeenAction(task.id, 'waiting_approval'); }}
+                                          className={`text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-[12px] font-bold transition-all duration-200 ${isFuture ? 'bg-white/[0.04] text-[#F7F4EB]/50 border border-white/[0.08]' : 'bg-white/[0.12] hover:bg-white/[0.18] text-[#F7F4EB] border border-white/[0.15] active:scale-[0.95]'}`}
+                                        >
+                                          {isFuture ? 'Za wcześnie' : 'Zrobione'}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {teenTab === 'archive' && (
+                          <div className="transition-opacity duration-300">
+                             {historyTasks.length === 0 ? (
+                               <p className="text-sm text-[#F7F4EB]/50 text-center mt-10">Brak starszych danych.</p>
+                            ) : (
+                              groupTasksByMonth(historyTasks).map(([monthKey, data]) => (
+                                <HistoryCard key={monthKey} monthKey={monthKey} data={data} isParent={false} />
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
-    </div>
+    </>
   )
 }
