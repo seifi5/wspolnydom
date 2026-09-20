@@ -24,6 +24,52 @@ const urlB64ToUint8Array = (base64String) => {
   return outputArray
 }
 
+// Nowy, spersonalizowany komponent Listy Rozwijanej
+const CustomSelect = ({ value, onChange, options, size = 'normal' }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedOption = options.find(opt => String(opt.value) === String(value))
+  
+  const paddingClass = size === 'small' ? 'p-2.5 text-xs' : 'p-3 text-sm'
+  const itemPaddingClass = size === 'small' ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm'
+
+  return (
+    <div className="relative w-full">
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl flex justify-between items-center cursor-pointer transition-colors hover:bg-white/[0.06] ${paddingClass}`}
+      >
+        <span className="truncate pr-2">{selectedOption ? selectedOption.label : 'Wybierz...'}</span>
+        <svg className={`w-3.5 h-3.5 text-[#F7F4EB]/50 transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+      
+      {isOpen && (
+        <>
+          {/* Niewidzialna warstwa pod listą, która zamyka ją po kliknięciu poza obszarem */}
+          <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)}></div>
+          
+          {/* Właściwa, "szklana" lista */}
+          <div className="absolute z-[101] w-full mt-1.5 bg-[#120816]/90 backdrop-blur-[20px] border border-white/[0.12] rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.6)] max-h-56 overflow-y-auto">
+            <div className="p-1.5 flex flex-col gap-0.5">
+              {options.map((opt) => (
+                <div 
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value)
+                    setIsOpen(false)
+                  }}
+                  className={`${itemPaddingClass} rounded-lg cursor-pointer transition-all ${String(value) === String(opt.value) ? 'bg-white/[0.12] text-[#F7F4EB] font-bold' : 'text-[#F7F4EB]/70 hover:bg-white/[0.04] hover:text-[#F7F4EB]'}`}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [pin, setPin] = useState('')
   const [user, setUser] = useState(null)
@@ -59,7 +105,7 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
-  const [teenFilterStatus, setTeenFilterStatus] = useState('today') // Nowy domyślny status
+  const [teenFilterStatus, setTeenFilterStatus] = useState('today') 
   const [parentTab, setParentTab] = useState('dashboard') 
   const [teenTab, setTeenTab] = useState('active') 
   const [expandedTeenId, setExpandedTeenId] = useState(null)
@@ -83,7 +129,6 @@ export default function App() {
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
 
-  // Wspólny styl tła z nałożonym gradientem przyciemniającym i efektem fixed (paralaksa)
   const appBackgroundStyle = {
     backgroundImage: 'linear-gradient(rgba(18, 8, 22, 0.65), rgba(18, 8, 22, 0.85)), url(/bg-bubbles.jpeg)',
     backgroundAttachment: 'fixed',
@@ -808,15 +853,21 @@ export default function App() {
 
                       <form onSubmit={handleSaveTask} className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-4">
-                          <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
-                            {taskMode === 'extra' && <option value="all" className="bg-[#1E0F24]">Tablica (Giełda)</option>}
-                            {teens.map(t => <option key={t.id} value={t.id} className="bg-[#1E0F24]">{t.name}</option>)}
-                          </select>
+                          <CustomSelect 
+                            value={assigneeId} 
+                            onChange={setAssigneeId}
+                            options={[
+                              ...(taskMode === 'extra' ? [{ value: 'all', label: 'Tablica (Giełda)' }] : []),
+                              ...teens.map(t => ({ value: t.id, label: t.name }))
+                            ]}
+                          />
 
                           {taskMode === 'base' && !editingTaskId && (
-                            <select value={taskTemplate} onChange={e => setTaskTemplate(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
-                              {Object.keys(TEMPLATES).map(key => <option key={key} value={key} className="bg-[#1E0F24]">{TEMPLATES[key].title}</option>)}
-                            </select>
+                            <CustomSelect 
+                              value={taskTemplate} 
+                              onChange={setTaskTemplate}
+                              options={Object.keys(TEMPLATES).map(key => ({ value: key, label: TEMPLATES[key].title }))}
+                            />
                           )}
                         </div>
 
@@ -830,11 +881,15 @@ export default function App() {
                                 <input type="number" min="1" value={bountyReward} onChange={e => setBountyReward(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm font-bold outline-none focus:border-white/[0.2] transition-colors" />
                               </div>
                             ) : (
-                              <select value={customWeight} onChange={e => setCustomWeight(e.target.value)} className="bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-sm outline-none focus:border-white/[0.2] transition-colors">
-                                <option value="1" className="bg-[#1E0F24]">1 pkt (Niska waga)</option>
-                                <option value="2" className="bg-[#1E0F24]">2 pkt (Średnia waga)</option>
-                                <option value="3" className="bg-[#1E0F24]">3 pkt (Wysoka waga)</option>
-                              </select>
+                              <CustomSelect 
+                                value={customWeight} 
+                                onChange={setCustomWeight}
+                                options={[
+                                  { value: '1', label: '1 pkt (Niska waga)' },
+                                  { value: '2', label: '2 pkt (Średnia waga)' },
+                                  { value: '3', label: '3 pkt (Wysoka waga)' }
+                                ]}
+                              />
                             )}
 
                             <div className="grid grid-cols-2 gap-4">
@@ -940,24 +995,37 @@ export default function App() {
 
                   <div className="flex flex-col gap-3 mb-5">
                     <div className="grid grid-cols-2 gap-3">
-                      <select value={filterTeen} onChange={e => setFilterTeen(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
-                        <option value="all" className="bg-[#1E0F24]">Wszyscy wykonawcy</option>
-                        {teens.map(t => <option key={t.id} value={t.id} className="bg-[#1E0F24]">{t.name}</option>)}
-                      </select>
-                      <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
-                        <option value="all" className="bg-[#1E0F24]">Wszystkie statusy</option>
-                        <option value="pending" className="bg-[#1E0F24]">Do zrobienia</option>
-                        <option value="waiting_approval" className="bg-[#1E0F24]">Czekają</option>
-                        <option value="approved" className="bg-[#1E0F24]">Zatwierdzone</option>
-                        <option value="failed" className="bg-[#1E0F24]">Niewykonane</option>
-                      </select>
+                      <CustomSelect 
+                        size="small"
+                        value={filterTeen} 
+                        onChange={setFilterTeen}
+                        options={[
+                          { value: 'all', label: 'Wszyscy wykonawcy' },
+                          ...teens.map(t => ({ value: t.id, label: t.name }))
+                        ]}
+                      />
+                      <CustomSelect 
+                        size="small"
+                        value={filterStatus} 
+                        onChange={setFilterStatus}
+                        options={[
+                          { value: 'all', label: 'Wszystkie statusy' },
+                          { value: 'pending', label: 'Do zrobienia' },
+                          { value: 'waiting_approval', label: 'Czekają' },
+                          { value: 'approved', label: 'Zatwierdzone' },
+                          { value: 'failed', label: 'Niewykonane' }
+                        ]}
+                      />
                     </div>
-                    <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full min-w-0 text-ellipsis overflow-hidden bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-2.5 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors">
-                      <option value="all" className="bg-[#1E0F24]">Wszystkie typy zadań</option>
-                      {uniqueTaskTypes.map(type => (
-                        <option key={type} value={type} className="bg-[#1E0F24]">{type}</option>
-                      ))}
-                    </select>
+                    <CustomSelect 
+                      size="small"
+                      value={filterType} 
+                      onChange={setFilterType}
+                      options={[
+                        { value: 'all', label: 'Wszystkie typy zadań' },
+                        ...uniqueTaskTypes.map(type => ({ value: type, label: type }))
+                      ]}
+                    />
                   </div>
 
                   <div className="bg-white/[0.03] border border-white/[0.06] p-3 rounded-2xl mb-6">
@@ -1153,19 +1221,20 @@ export default function App() {
                   {teenTab === 'active' && (
                     <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg transition-opacity duration-300">
                       <div className="mb-5">
-                        <select 
+                        <CustomSelect 
+                          size="small"
                           value={teenFilterStatus} 
-                          onChange={e => setTeenFilterStatus(e.target.value)} 
-                          className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors"
-                        >
-                          <option value="today" className="bg-[#1E0F24]">Na dzisiaj</option>
-                          <option value="all" className="bg-[#1E0F24]">Wszystkie zadania</option>
-                          <option value="evaluated" className="bg-[#1E0F24]">Wpływające na wynik (%)</option>
-                          <option value="pending" className="bg-[#1E0F24]">Do zrobienia (przyszłe)</option>
-                          <option value="waiting_approval" className="bg-[#1E0F24]">Czekają na akceptację</option>
-                          <option value="approved" className="bg-[#1E0F24]">Zatwierdzone</option>
-                          <option value="failed" className="bg-[#1E0F24]">Niewykonane</option>
-                        </select>
+                          onChange={setTeenFilterStatus}
+                          options={[
+                            { value: 'today', label: 'Na dzisiaj' },
+                            { value: 'all', label: 'Wszystkie zadania' },
+                            { value: 'evaluated', label: 'Wpływające na wynik (%)' },
+                            { value: 'pending', label: 'Do zrobienia (przyszłe)' },
+                            { value: 'waiting_approval', label: 'Czekają na akceptację' },
+                            { value: 'approved', label: 'Zatwierdzone' },
+                            { value: 'failed', label: 'Niewykonane' }
+                          ]}
+                        />
                       </div>
 
                       <div className="flex flex-col">
