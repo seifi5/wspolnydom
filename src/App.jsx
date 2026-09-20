@@ -27,7 +27,7 @@ const urlB64ToUint8Array = (base64String) => {
 export default function App() {
   const [pin, setPin] = useState('')
   const [user, setUser] = useState(null)
-  const [isSessionLoading, setIsSessionLoading] = useState(true) // Nowy stan dla "Zapamiętaj mnie"
+  const [isSessionLoading, setIsSessionLoading] = useState(true)
   const [error, setError] = useState('')
   const [allTasks, setAllTasks] = useState([])
   const [teens, setTeens] = useState([])
@@ -59,7 +59,7 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
-  const [teenFilterStatus, setTeenFilterStatus] = useState('all')
+  const [teenFilterStatus, setTeenFilterStatus] = useState('today') // Nowy domyślny status
   const [parentTab, setParentTab] = useState('dashboard') 
   const [teenTab, setTeenTab] = useState('active') 
   const [expandedTeenId, setExpandedTeenId] = useState(null)
@@ -82,6 +82,14 @@ export default function App() {
 
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
+
+  // Wspólny styl tła z nałożonym gradientem przyciemniającym i efektem fixed (paralaksa)
+  const appBackgroundStyle = {
+    backgroundImage: 'linear-gradient(rgba(18, 8, 22, 0.65), rgba(18, 8, 22, 0.85)), url(/bg-bubbles.jpeg)',
+    backgroundAttachment: 'fixed',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -172,6 +180,11 @@ export default function App() {
     return `${d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit' })} o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
   }
 
+  const isTaskToday = (dateStr) => {
+    const d = new Date(dateStr)
+    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }
+
   const groupTasksByMonth = (tasksToGroup) => {
     const groups = {}
     tasksToGroup.forEach(t => {
@@ -223,7 +236,6 @@ export default function App() {
     if (data) setAllTasks(data)
   }
 
-  // Nowy efekt: Logowanie z pamięci przeglądarki (localStorage)
   useEffect(() => {
     const restoreSession = async () => {
       const savedId = localStorage.getItem('wspolnydom_user_id')
@@ -248,7 +260,7 @@ export default function App() {
       setError('Nieprawidłowy PIN')
     } else {
       setUser(data)
-      localStorage.setItem('wspolnydom_user_id', data.id) // Zapisanie sesji!
+      localStorage.setItem('wspolnydom_user_id', data.id)
       fetchTeens()
       fetchTasks()
     }
@@ -410,10 +422,9 @@ export default function App() {
       .map(t => new Date(t.due_date).getDate())
   )
 
-  // Ekran ładowania (aby nie mignął panel logowania przed wczytaniem z pamięci)
   if (isSessionLoading) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={appBackgroundStyle}>
         <div className="w-8 h-8 border-4 border-[#F7F4EB]/20 border-t-[#F7F4EB] rounded-full animate-spin"></div>
       </div>
     )
@@ -421,7 +432,7 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] text-[#F7F4EB] flex flex-col items-center justify-center p-4 font-sans">
+      <div className="min-h-screen text-[#F7F4EB] flex flex-col items-center justify-center p-4 font-sans" style={appBackgroundStyle}>
         <h1 className="text-3xl font-bold mb-10 tracking-widest text-[#F7F4EB] uppercase">
           Wspólny Dom
         </h1>
@@ -534,7 +545,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#3A1C3B] via-[#1E0F24] to-[#120816] text-[#F7F4EB] pb-12 font-sans">
+    <div className="min-h-screen text-[#F7F4EB] pb-12 font-sans" style={appBackgroundStyle}>
       
       {toastMessage && (
         <div className="fixed top-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none transition-all duration-300">
@@ -555,7 +566,7 @@ export default function App() {
           onClick={() => { 
             setUser(null); 
             setPin(''); 
-            localStorage.removeItem('wspolnydom_user_id'); // Wylogowanie czyści pamięć!
+            localStorage.removeItem('wspolnydom_user_id');
           }} 
           className="text-[10px] uppercase tracking-widest font-bold text-[#F7F4EB]/80 bg-white/[0.06] hover:bg-white/[0.1] px-4 py-2 rounded-full transition-all duration-200 active:scale-95 border border-white/[0.08]"
         >
@@ -1035,8 +1046,11 @@ export default function App() {
               const bountyBoardTasks = tasks.filter(t => !t.assignee_id && t.status === 'pending')
               
               let displayedTeenTasks = tasks.filter(t => t.assignee_id === user.id)
+              
               if (teenFilterStatus === 'evaluated') {
                  displayedTeenTasks = displayedTeenTasks.filter(t => t.reward === 0 && (t.status !== 'pending' || new Date(t.due_date) < now))
+              } else if (teenFilterStatus === 'today') {
+                 displayedTeenTasks = displayedTeenTasks.filter(t => isTaskToday(t.due_date))
               } else if (teenFilterStatus !== 'all') {
                  displayedTeenTasks = displayedTeenTasks.filter(t => t.status === teenFilterStatus)
               }
@@ -1144,9 +1158,10 @@ export default function App() {
                           onChange={e => setTeenFilterStatus(e.target.value)} 
                           className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] p-3 rounded-xl text-xs outline-none focus:border-white/[0.2] transition-colors"
                         >
+                          <option value="today" className="bg-[#1E0F24]">Na dzisiaj</option>
                           <option value="all" className="bg-[#1E0F24]">Wszystkie zadania</option>
                           <option value="evaluated" className="bg-[#1E0F24]">Wpływające na wynik (%)</option>
-                          <option value="pending" className="bg-[#1E0F24]">Do zrobienia</option>
+                          <option value="pending" className="bg-[#1E0F24]">Do zrobienia (przyszłe)</option>
                           <option value="waiting_approval" className="bg-[#1E0F24]">Czekają na akceptację</option>
                           <option value="approved" className="bg-[#1E0F24]">Zatwierdzone</option>
                           <option value="failed" className="bg-[#1E0F24]">Niewykonane</option>
