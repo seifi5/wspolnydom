@@ -80,7 +80,6 @@ export default function App() {
   const [allTasks, setAllTasks] = useState([])
   const [teens, setTeens] = useState([])
   
-  // Zaktualizowany stan budżetów (przechowuje historię)
   const [budgets, setBudgets] = useState({})
 
   const [pushSupported, setPushSupported] = useState(false)
@@ -272,7 +271,6 @@ export default function App() {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])) 
   }
 
-  // --- ZMIANA: calculateStats teraz przyjmuje rok i miesiąc oceny, aby dobrać odpowiedni budżet ---
   const calculateStats = (teenId, taskList, evalYear, evalMonth) => {
     const teenTasks = taskList.filter(t => t.assignee_id === teenId)
     const baseTasks = teenTasks.filter(t => t.reward === 0)
@@ -286,10 +284,8 @@ export default function App() {
     
     const successRate = maxPoints === 0 ? 100 : Math.round((earnedPoints / maxPoints) * 100)
     
-    // Szukamy profilu (dla wartości domyślnych, jeśli nie ma rekordu dla danego miesiąca)
     const teenProfile = teens.find(t => t.id === teenId) || (user?.id === teenId ? user : null)
     
-    // Szukamy "migawki" budżetu na oceniany miesiąc
     const bKey = `${teenId}-${evalYear}-${evalMonth}`
     const baseAllowance = budgets[bKey]?.base !== undefined ? budgets[bKey].base : (teenProfile?.base_allowance || 0)
     const bonusAllowance = budgets[bKey]?.bonus !== undefined ? budgets[bKey].bonus : (teenProfile?.bonus_allowance || 0)
@@ -910,7 +906,8 @@ export default function App() {
                         
                         <div className="flex justify-between items-center mb-5">
                           <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Budżety na miesiąc:</h2>
-                          <div className="flex gap-2 w-1/2">
+                        </div>
+                        <div className="flex gap-2 w-full mb-5">
                             <div className="flex-[3]">
                               <CustomSelect 
                                 size="small"
@@ -927,7 +924,6 @@ export default function App() {
                                 options={yearsOptions}
                               />
                             </div>
-                          </div>
                         </div>
                         
                         <div className="flex flex-col gap-5">
@@ -1169,6 +1165,26 @@ export default function App() {
                         </div>
 
                         <div className="flex flex-col gap-3 mb-5">
+                          {/* Wybór miesiąca i roku na całą szerokość */}
+                          <div className="flex gap-2 w-full">
+                            <div className="flex-[3]">
+                              <CustomSelect 
+                                size="small"
+                                value={overviewMonth} 
+                                onChange={(val) => setOverviewMonth(parseInt(val))}
+                                options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
+                              />
+                            </div>
+                            <div className="flex-[2]">
+                              <CustomSelect 
+                                size="small"
+                                value={overviewYear} 
+                                onChange={(val) => setOverviewYear(parseInt(val))}
+                                options={yearsOptions}
+                              />
+                            </div>
+                          </div>
+
                           <div className="grid grid-cols-2 gap-3">
                             <CustomSelect 
                               size="small"
