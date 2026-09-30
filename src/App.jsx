@@ -7,6 +7,7 @@ const TEMPLATES = {
   dog_evening: { title: 'Spacer z psem (wieczór)', weight: 1, startHour: 20, dueHour: 23 },
   dog_teeth: { title: 'Mycie zębów psa', weight: 1, startHour: 20, dueHour: 23 },
   dishwasher: { title: 'Opróżnianie zmywarki', weight: 2, startHour: 10, dueHour: 21 },
+  garbage: { title: 'Wyniesienie śmieci', weight: 1, startHour: 0, dueHour: 23 },
   room: { title: 'Sprzątanie pokoju', weight: 3, startHour: 10, dueHour: 20 },
   custom: { title: 'Własne zadanie', weight: 1 }
 }
