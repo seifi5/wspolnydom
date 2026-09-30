@@ -478,6 +478,9 @@ export default function App() {
 
   const HistoryCard = ({ monthKey, data, isParent }) => {
     const isExpanded = expandedMonth === monthKey
+    // Nowy stan do rozwijania listy zadań wewnątrz archiwum u rodzica
+    const [expandedArchiveTeen, setExpandedArchiveTeen] = useState(null) 
+
     return (
       <div className="bg-white/[0.04] backdrop-blur-[20px] border border-white/[0.08] rounded-[24px] p-5 mb-4 transition-all duration-200">
         <div className="flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all duration-200" onClick={() => setExpandedMonth(isExpanded ? null : monthKey)}>
@@ -493,19 +496,54 @@ export default function App() {
         </div>
         
         {isExpanded && (
-          <div className="mt-5 pt-5 border-t border-white/[0.08] flex flex-col gap-4">
+          <div className="mt-5 pt-5 border-t border-white/[0.08] flex flex-col gap-5">
             {isParent ? (
               teens.map(teen => {
                 const stats = calculateStats(teen.id, data.tasks, teen)
+                const isTeenDetailsOpen = expandedArchiveTeen === teen.id
+                const teenTasks = data.tasks.filter(t => t.assignee_id === teen.id)
+
                 return (
-                  <div key={teen.id} className="flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-sm text-[#F7F4EB]">{teen.name}</span>
-                      <div className="text-[10px] text-[#F7F4EB]/65 mt-1">
-                        Skuteczność: <span className={stats.hasBonus ? 'text-[#F7F4EB]' : ''}>{stats.successRate}%</span> | Ekstra: {stats.extraEarned} zł
+                  <div key={teen.id} className="border-b border-white/[0.04] last:border-0 pb-4 last:pb-0">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-bold text-sm text-[#F7F4EB]">{teen.name}</span>
+                        <div className="text-[10px] text-[#F7F4EB]/65 mt-1">
+                          Skuteczność: <span className={stats.hasBonus ? 'text-[#F7F4EB]' : ''}>{stats.successRate}%</span> | Ekstra: {stats.extraEarned} zł
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-lg text-[#F7F4EB] block">{stats.totalPayout.toFixed(0)} zł</span>
+                        <button 
+                          onClick={() => setExpandedArchiveTeen(isTeenDetailsOpen ? null : teen.id)}
+                          className="text-[9px] uppercase tracking-wider font-bold bg-white/[0.06] hover:bg-white/[0.1] text-[#F7F4EB]/80 px-3 py-1.5 rounded-full mt-1.5 transition-all"
+                        >
+                          {isTeenDetailsOpen ? 'Ukryj listę' : 'Pokaż zadania'}
+                        </button>
                       </div>
                     </div>
-                    <span className="font-bold text-lg text-[#F7F4EB]">{stats.totalPayout.toFixed(0)} zł</span>
+
+                    {/* Rozwijana lista zadań w archiwum rodzica */}
+                    {isTeenDetailsOpen && (
+                      <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 mt-4 max-h-[250px] overflow-y-auto custom-scrollbar">
+                        {teenTasks.length === 0 ? (
+                          <p className="text-xs text-[#F7F4EB]/50 py-1 text-center">Brak zadań w tym miesiącu.</p>
+                        ) : (
+                          [...teenTasks].sort((a,b) => new Date(a.due_date) - new Date(b.due_date)).map(t => (
+                            <div key={t.id} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                              <div className="flex-1 pr-2">
+                                <p className="text-[11px] font-semibold text-[#F7F4EB] leading-tight">{t.title}</p>
+                                <p className="text-[9px] text-[#F7F4EB]/50 mt-0.5">{new Date(t.due_date).toLocaleDateString('pl-PL')}</p>
+                              </div>
+                              <div className="text-right min-w-[70px]">
+                                <span className={`text-[10px] font-bold ${getStatusClass(t.status)}`}>{translateStatus(t.status)}</span>
+                                {t.reward > 0 && <span className="block text-[9px] font-medium text-[#F7F4EB] mt-0.5">+{t.reward} zł</span>}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })
