@@ -3,10 +3,10 @@ import { supabase } from './supabaseClient'
 
 const TEMPLATES = {
   dog_morning: { title: 'Spacer z psem (rano)', weight: 1, startHour: 7, dueHour: 9 },
-  dog_afternoon: { title: 'Spacer z psem (popołudnie)', weight: 1, startHour: 14, dueHour: 16 },
-  dog_evening: { title: 'Spacer z psem (wieczór)', weight: 1, startHour: 20, dueHour: 22 },
-  dog_teeth: { title: 'Mycie zębów psa', weight: 1, startHour: 20, dueHour: 22 },
-  dishwasher: { title: 'Opróżnianie zmywarki', weight: 2, startHour: 10, dueHour: 20 },
+  dog_afternoon: { title: 'Spacer z psem (popołudnie)', weight: 1, startHour: 14, dueHour: 17 },
+  dog_evening: { title: 'Spacer z psem (wieczór)', weight: 1, startHour: 20, dueHour: 23 },
+  dog_teeth: { title: 'Mycie zębów psa', weight: 1, startHour: 20, dueHour: 23 },
+  dishwasher: { title: 'Opróżnianie zmywarki', weight: 2, startHour: 10, dueHour: 21 },
   room: { title: 'Sprzątanie pokoju', weight: 3, startHour: 10, dueHour: 20 },
   custom: { title: 'Własne zadanie', weight: 1 }
 }
@@ -79,6 +79,7 @@ export default function App() {
   const [isPushEnabled, setIsPushEnabled] = useState(false)
 
   const [isPlannerOpen, setIsPlannerOpen] = useState(false)
+  const [plannerMonthOffset, setPlannerMonthOffset] = useState(0) // 0 = bieżący miesiąc, 1 = następny
   const [taskMode, setTaskMode] = useState('base')
   const [taskTemplate, setTaskTemplate] = useState('dog_morning')
   const [assigneeId, setAssigneeId] = useState('all') 
@@ -110,14 +111,39 @@ export default function App() {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth()
+  
+  // Kalendarz globalny (dla widoku Przeglądu Zadań na pulpicie)
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
-
   const firstDayOfMonthRaw = new Date(year, month, 1).getDay()
   const firstDayOffset = (firstDayOfMonthRaw + 6) % 7
 
   const currentMonthName = now.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }).toUpperCase()
+  const currentMonthNameOnly = now.toLocaleString('pl-PL', { month: 'long' }).toUpperCase()
+  
+  const nextMonthDate = new Date(year, month + 1, 1)
+  const nextMonthNameOnly = nextMonthDate.toLocaleString('pl-PL', { month: 'long' }).toUpperCase()
+
   const startOfThisMonth = new Date(year, month, 1).toISOString()
+
+  // Niezależny kalendarz dla kreatora zadań (uwzględnia przesunięcie o 1 miesiąc)
+  const plannerDate = new Date(year, month + plannerMonthOffset, 1)
+  const plannerYear = plannerDate.getFullYear()
+  const plannerMonth = plannerDate.getMonth()
+  const plannerDaysInMonth = new Date(plannerYear, plannerMonth + 1, 0).getDate()
+  const plannerDaysArray = Array.from({ length: plannerDaysInMonth }, (_, i) => i + 1)
+  const plannerFirstDayOffset = (new Date(plannerYear, plannerMonth, 1).getDay() + 6) % 7
+
+  const isPlannerWeekendDay = (day) => {
+    const dayOfWeek = (new Date(plannerYear, plannerMonth, day).getDay() + 6) % 7
+    return dayOfWeek >= 5
+  }
+
+  const selectAllDays = () => setSelectedDays([...plannerDaysArray])
+  const selectWeekdays = () => setSelectedDays(plannerDaysArray.filter(day => { 
+    const d = (new Date(plannerYear, plannerMonth, day).getDay() + 6) % 7
+    return d < 5 
+  }))
 
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
@@ -329,8 +355,8 @@ export default function App() {
         assignee_id: assigneeId, 
         weight: parseInt(templateWeight), 
         reward: 0,
-        start_date: new Date(year, month, day, startH, startM, 0).toISOString(),
-        due_date: new Date(year, month, day, dueH, dueM, 0).toISOString(), 
+        start_date: new Date(plannerYear, plannerMonth, day, startH, startM, 0).toISOString(),
+        due_date: new Date(plannerYear, plannerMonth, day, dueH, dueM, 0).toISOString(), 
         status: 'pending'
       }))
       await supabase.from('monthly_tasks').insert(inserts)
@@ -347,6 +373,7 @@ export default function App() {
     setDueDate('')
     setEditingTaskId(null)
     setSelectedDays([])
+    setPlannerMonthOffset(0)
     setAssigneeId(teens.length > 0 ? teens[0].id : '')
     setIsPlannerOpen(false)
   }
@@ -372,11 +399,6 @@ export default function App() {
   }
 
   const toggleDay = (day) => setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
-  const selectAllDays = () => setSelectedDays([...daysArray])
-  const selectWeekdays = () => setSelectedDays(daysArray.filter(day => { 
-    const d = (new Date(year, month, day).getDay() + 6) % 7
-    return d < 5 
-  }))
 
   const isWeekendDay = (day) => {
     const dayOfWeek = (new Date(year, month, day).getDay() + 6) % 7
@@ -936,7 +958,25 @@ export default function App() {
 
                               {taskMode === 'base' && taskTemplate !== 'custom' && !editingTaskId && (
                                 <div className="mt-2">
-                                  <div className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-3">Wybierz dni realizacji ({currentMonthName})</div>
+                                  <div className="flex justify-between items-center mb-3">
+                                    <div className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65">Wybierz dni realizacji</div>
+                                    <div className="flex bg-white/[0.04] p-0.5 rounded-lg border border-white/[0.08]">
+                                      <button 
+                                        type="button"
+                                        onClick={() => { setPlannerMonthOffset(0); setSelectedDays([]); }}
+                                        className={`px-3 py-1.5 text-[9px] uppercase tracking-wider font-bold rounded-md transition-all ${plannerMonthOffset === 0 ? 'bg-white/[0.12] text-[#F7F4EB]' : 'text-[#F7F4EB]/50'}`}
+                                      >
+                                        {currentMonthNameOnly}
+                                      </button>
+                                      <button 
+                                        type="button"
+                                        onClick={() => { setPlannerMonthOffset(1); setSelectedDays([]); }}
+                                        className={`px-3 py-1.5 text-[9px] uppercase tracking-wider font-bold rounded-md transition-all ${plannerMonthOffset === 1 ? 'bg-white/[0.12] text-[#F7F4EB]' : 'text-[#F7F4EB]/50'}`}
+                                      >
+                                        {nextMonthNameOnly}
+                                      </button>
+                                    </div>
+                                  </div>
                                   
                                   <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-[10px] font-bold text-[#F7F4EB]/50">
                                     {WEEKDAYS_SHORT.map((wd, i) => (
@@ -945,11 +985,11 @@ export default function App() {
                                   </div>
 
                                   <div className="grid grid-cols-7 gap-1.5 mb-4">
-                                    {Array.from({ length: firstDayOffset }).map((_, i) => (
+                                    {Array.from({ length: plannerFirstDayOffset }).map((_, i) => (
                                       <div key={`offset-${i}`} className="h-9"></div>
                                     ))}
-                                    {daysArray.map(day => {
-                                      const isWeekend = isWeekendDay(day)
+                                    {plannerDaysArray.map(day => {
+                                      const isWeekend = isPlannerWeekendDay(day)
                                       const isSelected = selectedDays.includes(day)
                                       return (
                                         <button 
