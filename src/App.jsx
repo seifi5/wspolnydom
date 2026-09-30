@@ -79,6 +79,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [allTasks, setAllTasks] = useState([])
   const [teens, setTeens] = useState([])
+  
+  // Zaktualizowany stan budżetów (przechowuje historię)
   const [budgets, setBudgets] = useState({})
 
   const [pushSupported, setPushSupported] = useState(false)
@@ -131,7 +133,7 @@ export default function App() {
 
   const startOfThisMonth = new Date(currentYear, currentMonth, 1).toISOString()
 
-  // Kalendarz dla Przeglądu Zadań (zależy od overviewMonth i overviewYear)
+  // Kalendarz dla Przeglądu Zadań
   const overviewDaysInMonth = new Date(overviewYear, overviewMonth + 1, 0).getDate()
   const overviewDaysArray = Array.from({ length: overviewDaysInMonth }, (_, i) => i + 1)
   const overviewFirstDayOffset = (new Date(overviewYear, overviewMonth, 1).getDay() + 6) % 7
@@ -248,8 +250,7 @@ export default function App() {
 
   const formatFutureTime = (dateStr) => {
     const d = new Date(dateStr)
-    const today = new Date()
-    if (d.getDate() === today.getDate() && d.getMonth() === today.getMonth()) {
+    if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth()) {
         return `dzisiaj o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
     }
     return `${d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit' })} o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
@@ -271,7 +272,8 @@ export default function App() {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])) 
   }
 
-  const calculateStats = (teenId, taskList, teenProfile) => {
+  // --- ZMIANA: calculateStats teraz przyjmuje rok i miesiąc oceny, aby dobrać odpowiedni budżet ---
+  const calculateStats = (teenId, taskList, evalYear, evalMonth) => {
     const teenTasks = taskList.filter(t => t.assignee_id === teenId)
     const baseTasks = teenTasks.filter(t => t.reward === 0)
     const extraTasks = teenTasks.filter(t => t.reward > 0 && t.status === 'approved')
@@ -284,8 +286,13 @@ export default function App() {
     
     const successRate = maxPoints === 0 ? 100 : Math.round((earnedPoints / maxPoints) * 100)
     
-    const baseAllowance = teenProfile?.base_allowance || 0
-    const bonusAllowance = teenProfile?.bonus_allowance || 0
+    // Szukamy profilu (dla wartości domyślnych, jeśli nie ma rekordu dla danego miesiąca)
+    const teenProfile = teens.find(t => t.id === teenId) || (user?.id === teenId ? user : null)
+    
+    // Szukamy "migawki" budżetu na oceniany miesiąc
+    const bKey = `${teenId}-${evalYear}-${evalMonth}`
+    const baseAllowance = budgets[bKey]?.base !== undefined ? budgets[bKey].base : (teenProfile?.base_allowance || 0)
+    const bonusAllowance = budgets[bKey]?.bonus !== undefined ? budgets[bKey].bonus : (teenProfile?.bonus_allowance || 0)
     
     const currentBaseEarned = baseAllowance * (successRate / 100)
     const hasBonus = successRate > 90
@@ -300,15 +307,23 @@ export default function App() {
     if (data) {
       setTeens(data)
       if (data.length > 0 && assigneeId === '') setAssigneeId(data[0].id)
-      const budgetMap = {}
-      data.forEach(t => budgetMap[t.id] = { base: t.base_allowance, bonus: t.bonus_allowance })
-      setBudgets(budgetMap)
     }
   }
 
   const fetchTasks = async () => {
     const { data } = await supabase.from('monthly_tasks').select('*, profiles(name)').order('due_date', { ascending: true }).limit(1000)
     if (data) setAllTasks(data)
+  }
+
+  const fetchBudgets = async () => {
+    const { data } = await supabase.from('monthly_budgets').select('*')
+    if (data) {
+      const budgetMap = {}
+      data.forEach(b => {
+        budgetMap[`${b.teen_id}-${b.year}-${b.month}`] = { base: b.base_allowance, bonus: b.bonus_allowance }
+      })
+      setBudgets(budgetMap)
+    }
   }
 
   useEffect(() => {
@@ -320,6 +335,7 @@ export default function App() {
           setUser(data)
           fetchTeens()
           fetchTasks()
+          fetchBudgets()
         }
       }
       setIsSessionLoading(false)
@@ -338,6 +354,7 @@ export default function App() {
       localStorage.setItem('wspolnydom_user_id', data.id)
       fetchTeens()
       fetchTasks()
+      fetchBudgets()
     }
   }
 
@@ -435,13 +452,34 @@ export default function App() {
     fetchTasks()
   }
 
-  const handleBudgetChange = (teenId, field, value) => setBudgets(prev => ({ ...prev, [teenId]: { ...prev[teenId], [field]: value } }))
+  const handleBudgetChange = (teen, field, value) => {
+    const bKey = `${teen.id}-${overviewYear}-${overviewMonth}`
+    setBudgets(prev => {
+      const existing = prev[bKey] || { base: teen.base_allowance, bonus: teen.bonus_allowance }
+      return { ...prev, [bKey]: { ...existing, [field]: value } }
+    })
+  }
+
   const handleSaveBudgets = async () => {
-    for (const teenId of Object.keys(budgets)) {
-      await supabase.from('profiles').update({ base_allowance: parseFloat(budgets[teenId].base) || 0, bonus_allowance: parseFloat(budgets[teenId].bonus) || 0 }).eq('id', teenId)
+    const upserts = teens.map(teen => {
+      const bKey = `${teen.id}-${overviewYear}-${overviewMonth}`
+      return {
+        teen_id: teen.id,
+        year: overviewYear,
+        month: overviewMonth,
+        base_allowance: parseFloat(budgets[bKey]?.base ?? teen.base_allowance) || 0,
+        bonus_allowance: parseFloat(budgets[bKey]?.bonus ?? teen.bonus_allowance) || 0
+      }
+    })
+    
+    const { error } = await supabase.from('monthly_budgets').upsert(upserts, { onConflict: 'teen_id,year,month' })
+    if (error) {
+      console.error(error)
+      showToast('Błąd zapisu budżetów')
+    } else {
+      showToast('Zapisano budżet na wybrany miesiąc')
+      fetchBudgets()
     }
-    showToast('Budżety zaktualizowane')
-    fetchTeens()
   }
 
   const handleStatsClick = () => {
@@ -496,6 +534,9 @@ export default function App() {
   const HistoryCard = ({ monthKey, data, isParent }) => {
     const isExpanded = expandedMonth === monthKey
     const [expandedArchiveTeen, setExpandedArchiveTeen] = useState(null) 
+    const [yStr, mStr] = monthKey.split('-')
+    const evalYear = parseInt(yStr)
+    const evalMonth = parseInt(mStr) - 1
 
     return (
       <div className="bg-white/[0.04] backdrop-blur-[20px] border border-white/[0.08] rounded-[24px] p-5 mb-4 transition-all duration-200">
@@ -515,7 +556,7 @@ export default function App() {
           <div className="mt-5 pt-5 border-t border-white/[0.08] flex flex-col gap-5">
             {isParent ? (
               teens.map(teen => {
-                const stats = calculateStats(teen.id, data.tasks, teen)
+                const stats = calculateStats(teen.id, data.tasks, evalYear, evalMonth)
                 const isTeenDetailsOpen = expandedArchiveTeen === teen.id
                 const teenTasks = data.tasks.filter(t => t.assignee_id === teen.id)
 
@@ -564,7 +605,7 @@ export default function App() {
               })
             ) : (
               (() => {
-                const stats = calculateStats(user.id, data.tasks, user)
+                const stats = calculateStats(user.id, data.tasks, evalYear, evalMonth)
                 return (
                   <div>
                     <div className="flex justify-between items-center mb-4">
@@ -719,7 +760,7 @@ export default function App() {
                     <div className="transition-opacity duration-300">
                       <div className="flex flex-col gap-4 mb-6">
                         {teens.map(teen => {
-                          const stats = calculateStats(teen.id, tasks, teen)
+                          const stats = calculateStats(teen.id, tasks, currentYear, currentMonth)
                           const isExpanded = expandedTeenId === teen.id
                           
                           const teenBaseTasks = tasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
@@ -866,21 +907,49 @@ export default function App() {
                       </div>
 
                       <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
-                        <h2 className="font-bold text-[#F7F4EB] mb-5 text-[11px] tracking-widest uppercase">Budżety miesięczne</h2>
-                        <div className="flex flex-col gap-5">
-                          {teens.map(teen => (
-                            <div key={teen.id} className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">{teen.name} - Baza (zł)</label>
-                                <input type="number" value={budgets[teen.id]?.base ?? teen.base_allowance} onChange={e => handleBudgetChange(teen.id, 'base', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Bonus &gt;90%</label>
-                                <input type="number" value={budgets[teen.id]?.bonus ?? teen.bonus_allowance} onChange={e => handleBudgetChange(teen.id, 'bonus', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
-                              </div>
+                        
+                        <div className="flex justify-between items-center mb-5">
+                          <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Budżety na miesiąc:</h2>
+                          <div className="flex gap-2 w-1/2">
+                            <div className="flex-[3]">
+                              <CustomSelect 
+                                size="small"
+                                value={overviewMonth} 
+                                onChange={(val) => setOverviewMonth(parseInt(val))}
+                                options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
+                              />
                             </div>
-                          ))}
-                          <button onClick={handleSaveBudgets} className="w-full bg-white/[0.1] border border-white/[0.12] hover:bg-white/[0.15] text-[#F7F4EB] text-[11px] uppercase tracking-widest py-4 rounded-[16px] font-bold active:scale-[0.97] transition-all duration-200 mt-2">Zapisz Budżety</button>
+                            <div className="flex-[2]">
+                              <CustomSelect 
+                                size="small"
+                                value={overviewYear} 
+                                onChange={(val) => setOverviewYear(parseInt(val))}
+                                options={yearsOptions}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-5">
+                          {teens.map(teen => {
+                            const bKey = `${teen.id}-${overviewYear}-${overviewMonth}`
+                            const currentBase = budgets[bKey]?.base !== undefined ? budgets[bKey].base : teen.base_allowance
+                            const currentBonus = budgets[bKey]?.bonus !== undefined ? budgets[bKey].bonus : teen.bonus_allowance
+
+                            return (
+                              <div key={teen.id} className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">{teen.name} - Baza (zł)</label>
+                                  <input type="number" value={currentBase} onChange={e => handleBudgetChange(teen, 'base', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Bonus &gt;90%</label>
+                                  <input type="number" value={currentBonus} onChange={e => handleBudgetChange(teen, 'bonus', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
+                                </div>
+                              </div>
+                            )
+                          })}
+                          <button onClick={handleSaveBudgets} className="w-full bg-white/[0.1] border border-white/[0.12] hover:bg-white/[0.15] text-[#F7F4EB] text-[11px] uppercase tracking-widest py-4 rounded-[16px] font-bold active:scale-[0.97] transition-all duration-200 mt-2">Zapisz na ten miesiąc</button>
                         </div>
                       </div>
 
@@ -1100,26 +1169,6 @@ export default function App() {
                         </div>
 
                         <div className="flex flex-col gap-3 mb-5">
-                          {/* Wybór miesiąca i roku na całą szerokość w osobnej linii */}
-                          <div className="flex gap-2 w-full">
-                            <div className="flex-[3]">
-                              <CustomSelect 
-                                size="small"
-                                value={overviewMonth} 
-                                onChange={(val) => setOverviewMonth(parseInt(val))}
-                                options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
-                              />
-                            </div>
-                            <div className="flex-[2]">
-                              <CustomSelect 
-                                size="small"
-                                value={overviewYear} 
-                                onChange={(val) => setOverviewYear(parseInt(val))}
-                                options={yearsOptions}
-                              />
-                            </div>
-                          </div>
-
                           <div className="grid grid-cols-2 gap-3">
                             <CustomSelect 
                               size="small"
@@ -1236,7 +1285,7 @@ export default function App() {
                 // --- WIDOK NASTOLATKA ---
                 <>
                   {(() => {
-                    const stats = calculateStats(user.id, tasks, user)
+                    const stats = calculateStats(user.id, tasks, currentYear, currentMonth)
                     const bountyBoardTasks = tasks.filter(t => !t.assignee_id && t.status === 'pending')
                     
                     let displayedTeenTasks = tasks.filter(t => t.assignee_id === user.id)
