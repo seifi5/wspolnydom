@@ -3,16 +3,17 @@ import { supabase } from './supabaseClient'
 
 const TEMPLATES = {
   dog_morning: { title: 'Spacer z psem (rano)', weight: 1, startHour: 7, dueHour: 9 },
-  dog_afternoon: { title: 'Spacer z psem (popołudnie)', weight: 1, startHour: 14, dueHour: 17 },
-  dog_evening: { title: 'Spacer z psem (wieczór)', weight: 1, startHour: 20, dueHour: 23 },
-  dog_teeth: { title: 'Mycie zębów psa', weight: 1, startHour: 20, dueHour: 23 },
-  dishwasher: { title: 'Opróżnianie zmywarki', weight: 2, startHour: 10, dueHour: 21 },
-  garbage: { title: 'Wyniesienie śmieci', weight: 1, startHour: 0, dueHour: 23 },
+  dog_afternoon: { title: 'Spacer z psem (popołudnie)', weight: 1, startHour: 14, dueHour: 16 },
+  dog_evening: { title: 'Spacer z psem (wieczór)', weight: 1, startHour: 20, dueHour: 22 },
+  dog_teeth: { title: 'Mycie zębów psa', weight: 1, startHour: 20, dueHour: 22 },
+  dishwasher: { title: 'Opróżnianie zmywarki', weight: 2, startHour: 10, dueHour: 20 },
   room: { title: 'Sprzątanie pokoju', weight: 3, startHour: 10, dueHour: 20 },
+  garbage: { title: 'Wyniesienie śmieci', weight: 1, startHour: 0, dueHour: 23 },
   custom: { title: 'Własne zadanie', weight: 1 }
 }
 
 const WEEKDAYS_SHORT = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
+const MONTH_NAMES = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień']
 
 const urlB64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -68,6 +69,10 @@ const CustomSelect = ({ value, onChange, options, size = 'normal' }) => {
 }
 
 export default function App() {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth()
+
   const [pin, setPin] = useState('')
   const [user, setUser] = useState(null)
   const [isSessionLoading, setIsSessionLoading] = useState(true)
@@ -80,7 +85,7 @@ export default function App() {
   const [isPushEnabled, setIsPushEnabled] = useState(false)
 
   const [isPlannerOpen, setIsPlannerOpen] = useState(false)
-  const [plannerMonthOffset, setPlannerMonthOffset] = useState(0) // 0 = bieżący miesiąc, 1 = następny
+  const [plannerMonthOffset, setPlannerMonthOffset] = useState(0) 
   const [taskMode, setTaskMode] = useState('base')
   const [taskTemplate, setTaskTemplate] = useState('dog_morning')
   const [assigneeId, setAssigneeId] = useState('all') 
@@ -96,10 +101,16 @@ export default function App() {
   const [templateDue, setTemplateDue] = useState('09:00')
   const [templateWeight, setTemplateWeight] = useState(1)
 
+  // Filtry dla przeglądu zadań
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
+  
+  // Nowe stany: Przegląd zadań - wybór miesiąca i roku
+  const [overviewMonth, setOverviewMonth] = useState(currentMonth)
+  const [overviewYear, setOverviewYear] = useState(currentYear)
+
   const [teenFilterStatus, setTeenFilterStatus] = useState('today') 
   const [parentTab, setParentTab] = useState('dashboard') 
   const [teenTab, setTeenTab] = useState('active') 
@@ -109,26 +120,35 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState('')
 
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  
-  // Kalendarz globalny (dla widoku Przeglądu Zadań na pulpicie)
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
-  const firstDayOfMonthRaw = new Date(year, month, 1).getDay()
-  const firstDayOffset = (firstDayOfMonthRaw + 6) % 7
+  // Opcje lat (od 2026 do przyszłego roku)
+  const yearsOptions = []
+  for (let y = 2026; y <= currentYear + 1; y++) {
+    yearsOptions.push({ value: y, label: y.toString() })
+  }
 
+  // Kalendarz dla głównego pulpitu
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  
   const currentMonthName = now.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }).toUpperCase()
   const currentMonthNameOnly = now.toLocaleString('pl-PL', { month: 'long' }).toUpperCase()
   
-  const nextMonthDate = new Date(year, month + 1, 1)
+  const nextMonthDate = new Date(currentYear, currentMonth + 1, 1)
   const nextMonthNameOnly = nextMonthDate.toLocaleString('pl-PL', { month: 'long' }).toUpperCase()
 
-  const startOfThisMonth = new Date(year, month, 1).toISOString()
+  const startOfThisMonth = new Date(currentYear, currentMonth, 1).toISOString()
 
-  // Niezależny kalendarz dla kreatora zadań (uwzględnia przesunięcie o 1 miesiąc)
-  const plannerDate = new Date(year, month + plannerMonthOffset, 1)
+  // Kalendarz dla Przeglądu Zadań (zależy od overviewMonth i overviewYear)
+  const overviewDaysInMonth = new Date(overviewYear, overviewMonth + 1, 0).getDate()
+  const overviewDaysArray = Array.from({ length: overviewDaysInMonth }, (_, i) => i + 1)
+  const overviewFirstDayOffset = (new Date(overviewYear, overviewMonth, 1).getDay() + 6) % 7
+  const isOverviewWeekendDay = (day) => {
+    const dayOfWeek = (new Date(overviewYear, overviewMonth, day).getDay() + 6) % 7
+    return dayOfWeek >= 5
+  }
+
+  // Kalendarz dla Kreatora (planowanie)
+  const plannerDate = new Date(currentYear, currentMonth + plannerMonthOffset, 1)
   const plannerYear = plannerDate.getFullYear()
   const plannerMonth = plannerDate.getMonth()
   const plannerDaysInMonth = new Date(plannerYear, plannerMonth + 1, 0).getDate()
@@ -148,6 +168,11 @@ export default function App() {
 
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
+
+  // Reset filtra dnia przy zmianie miesiąca/roku w Przeglądzie Zadań
+  useEffect(() => {
+    setCalendarFilterDay(null)
+  }, [overviewMonth, overviewYear])
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -401,11 +426,6 @@ export default function App() {
 
   const toggleDay = (day) => setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
 
-  const isWeekendDay = (day) => {
-    const dayOfWeek = (new Date(year, month, day).getDay() + 6) % 7
-    return dayOfWeek >= 5
-  }
-
   const handleTeenAction = async (taskId, newStatus) => {
     await supabase.from('monthly_tasks').update({ status: newStatus, completed_at: newStatus === 'waiting_approval' ? new Date() : null }).eq('id', taskId)
     fetchTasks()
@@ -453,9 +473,15 @@ export default function App() {
     return classes[status] || 'text-[#F7F4EB]/65'
   }
 
-  const uniqueTaskTypes = Array.from(new Set(tasks.map(t => t.title)))
+  const uniqueTaskTypes = Array.from(new Set(allTasks.map(t => t.title)))
 
-  const filteredParentTasks = tasks.filter(t => {
+  // Zadania przypisane TYLKO do aktualnie wybranego miesiąca i roku w Przeglądzie
+  const overviewTasks = allTasks.filter(t => {
+    const d = new Date(t.due_date)
+    return d.getFullYear() === overviewYear && d.getMonth() === overviewMonth
+  })
+
+  const filteredParentTasks = overviewTasks.filter(t => {
     if (filterTeen !== 'all' && t.assignee_id !== filterTeen) return false
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
     if (filterType !== 'all' && t.title !== filterType) return false
@@ -467,7 +493,7 @@ export default function App() {
   })
 
   const daysWithTasksSet = new Set(
-    tasks
+    overviewTasks
       .filter(t => 
         (filterTeen === 'all' || t.assignee_id === filterTeen) && 
         (filterStatus === 'all' || t.status === filterStatus) &&
@@ -478,7 +504,6 @@ export default function App() {
 
   const HistoryCard = ({ monthKey, data, isParent }) => {
     const isExpanded = expandedMonth === monthKey
-    // Nowy stan do rozwijania listy zadań wewnątrz archiwum u rodzica
     const [expandedArchiveTeen, setExpandedArchiveTeen] = useState(null) 
 
     return (
@@ -523,7 +548,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Rozwijana lista zadań w archiwum rodzica */}
                     {isTeenDetailsOpen && (
                       <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 mt-4 max-h-[250px] overflow-y-auto custom-scrollbar">
                         {teenTasks.length === 0 ? (
@@ -1073,14 +1097,20 @@ export default function App() {
                       <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg">
                         <div className="flex justify-between items-center mb-4">
                           <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Przegląd zadań</h2>
-                          {calendarFilterDay !== null && (
-                            <button 
-                              onClick={() => setCalendarFilterDay(null)} 
-                              className="text-[10px] uppercase font-bold text-[#F7F4EB]/70 bg-white/[0.08] px-2.5 py-1 rounded-full border border-white/[0.08]"
-                            >
-                              Pokaż cały miesiąc
-                            </button>
-                          )}
+                          <div className="flex gap-2 w-1/2">
+                            <CustomSelect 
+                              size="small"
+                              value={overviewMonth} 
+                              onChange={(val) => setOverviewMonth(parseInt(val))}
+                              options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
+                            />
+                            <CustomSelect 
+                              size="small"
+                              value={overviewYear} 
+                              onChange={(val) => setOverviewYear(parseInt(val))}
+                              options={yearsOptions}
+                            />
+                          </div>
                         </div>
 
                         <div className="flex flex-col gap-3 mb-5">
@@ -1118,6 +1148,17 @@ export default function App() {
                           />
                         </div>
 
+                        {calendarFilterDay !== null && (
+                          <div className="mb-3 text-right">
+                            <button 
+                              onClick={() => setCalendarFilterDay(null)} 
+                              className="text-[10px] uppercase font-bold text-[#F7F4EB]/70 bg-white/[0.08] px-2.5 py-1 rounded-full border border-white/[0.08]"
+                            >
+                              Wyczyść filtr dnia
+                            </button>
+                          </div>
+                        )}
+
                         <div className="bg-white/[0.03] border border-white/[0.06] p-3 rounded-2xl mb-6">
                           <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#F7F4EB]/40 mb-1.5">
                             {WEEKDAYS_SHORT.map((wd, i) => (
@@ -1126,13 +1167,13 @@ export default function App() {
                           </div>
 
                           <div className="grid grid-cols-7 gap-1">
-                            {Array.from({ length: firstDayOffset }).map((_, i) => (
+                            {Array.from({ length: overviewFirstDayOffset }).map((_, i) => (
                               <div key={`cal-offset-${i}`} className="h-8"></div>
                             ))}
-                            {daysArray.map(day => {
+                            {overviewDaysArray.map(day => {
                               const hasTasks = daysWithTasksSet.has(day)
                               const isSelected = calendarFilterDay === day
-                              const isWeekend = isWeekendDay(day)
+                              const isWeekend = isOverviewWeekendDay(day)
 
                               return (
                                 <button
