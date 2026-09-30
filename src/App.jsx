@@ -107,6 +107,10 @@ export default function App() {
   const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
   
+  // Stany dla wybranych miesięcy w poszczególnych zakładkach
+  const [dashboardMonth, setDashboardMonth] = useState(currentMonth)
+  const [dashboardYear, setDashboardYear] = useState(currentYear)
+  
   const [overviewMonth, setOverviewMonth] = useState(currentMonth)
   const [overviewYear, setOverviewYear] = useState(currentYear)
 
@@ -162,6 +166,12 @@ export default function App() {
 
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
+
+  // Filtrowane zadania dla wybranego miesiąca na Pulpicie
+  const dashboardTasks = allTasks.filter(t => {
+    const d = new Date(t.due_date)
+    return d.getFullYear() === dashboardYear && d.getMonth() === dashboardMonth
+  })
 
   useEffect(() => {
     setCalendarFilterDay(null)
@@ -249,7 +259,7 @@ export default function App() {
 
   const formatFutureTime = (dateStr) => {
     const d = new Date(dateStr)
-    if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth()) {
+    if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
         return `dzisiaj o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
     }
     return `${d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit' })} o ${d.toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
@@ -754,17 +764,48 @@ export default function App() {
 
                   {parentTab === 'dashboard' && (
                     <div className="transition-opacity duration-300">
+                      
+                      {/* Wybór miesiąca dla pulpitu głównego */}
+                      <div className="flex justify-between items-center mb-4 px-2">
+                        <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Pulpit dla:</h2>
+                        <div className="flex gap-2 w-[65%]">
+                          <div className="flex-[3]">
+                            <CustomSelect 
+                              size="small"
+                              value={dashboardMonth} 
+                              onChange={(val) => setDashboardMonth(parseInt(val))}
+                              options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
+                            />
+                          </div>
+                          <div className="flex-[2]">
+                            <CustomSelect 
+                              size="small"
+                              value={dashboardYear} 
+                              onChange={(val) => setDashboardYear(parseInt(val))}
+                              options={yearsOptions}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="flex flex-col gap-4 mb-6">
                         {teens.map(teen => {
-                          const stats = calculateStats(teen.id, tasks, currentYear, currentMonth)
+                          const stats = calculateStats(teen.id, dashboardTasks, dashboardYear, dashboardMonth)
                           const isExpanded = expandedTeenId === teen.id
                           
-                          const teenBaseTasks = tasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
+                          const teenBaseTasks = dashboardTasks.filter(t => t.assignee_id === teen.id && t.reward === 0)
+                          const teenAdHoc = dashboardTasks.filter(t => t.assignee_id === teen.id && t.reward > 0)
+                          
                           const evaluatedTasks = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) < now)
                           const futureTasks = teenBaseTasks.filter(t => t.status === 'pending' && new Date(t.due_date) >= now)
-                          const teenAdHoc = tasks.filter(t => t.assignee_id === teen.id && t.reward > 0)
                           
                           const isDetailsExpanded = expandedDetailsTeenId === teen.id
+
+                          // Nowe 4 statystyki poproszone przez użytkownika
+                          const totalMonthPoints = teenBaseTasks.reduce((s, t) => s + t.weight, 0)
+                          const earnedPoints = teenBaseTasks.filter(t => t.status === 'approved').reduce((s, t) => s + t.weight, 0)
+                          const possibleToDatePoints = teenBaseTasks.filter(t => new Date(t.due_date) <= now).reduce((s, t) => s + t.weight, 0)
+                          const remainingPoints = teenBaseTasks.filter(t => t.status === 'pending' || t.status === 'waiting_approval').reduce((s, t) => s + t.weight, 0)
 
                           const futureBreakdown = {}
                           futureTasks.forEach(t => {
@@ -807,6 +848,28 @@ export default function App() {
                               {isExpanded && (
                                 <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-6">
                                   
+                                  {/* Tablica 4 szczegółowych wskaźników punktowych */}
+                                  <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-xs">
+                                      <div>
+                                        <p className="text-[9px] text-[#F7F4EB]/50 uppercase tracking-wider leading-tight mb-1">Do zdobycia (cały miesiąc)</p>
+                                        <p className="font-bold text-[#F7F4EB] text-sm">{totalMonthPoints} pkt</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] text-[#F7F4EB]/50 uppercase tracking-wider leading-tight mb-1">Do zdobycia (do dzisiaj)</p>
+                                        <p className="font-bold text-[#F7F4EB] text-sm">{possibleToDatePoints} pkt</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] text-[#F7F4EB]/50 uppercase tracking-wider leading-tight mb-1">Zdobyte dotychczas</p>
+                                        <p className="font-bold text-[#F7F4EB] text-sm">{earnedPoints} pkt</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] text-[#F7F4EB]/50 uppercase tracking-wider leading-tight mb-1">Zostało do zdobycia</p>
+                                        <p className="font-bold text-[#F7F4EB] text-sm">{remainingPoints} pkt</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
                                   <div>
                                     <div className="flex justify-between items-end mb-3">
                                       <div>
@@ -952,10 +1015,11 @@ export default function App() {
                       <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
                         <h2 className="font-bold text-[#F7F4EB] mb-4 text-[11px] tracking-widest uppercase flex justify-between items-center">
                           Oczekujące na zatwierdzenie
-                          <span className="bg-white/[0.1] text-[#F7F4EB] text-[10px] px-2 py-1 rounded-lg">{tasks.filter(t => t.status === 'waiting_approval').length}</span>
+                          <span className="bg-white/[0.1] text-[#F7F4EB] text-[10px] px-2 py-1 rounded-lg">{allTasks.filter(t => t.status === 'waiting_approval').length}</span>
                         </h2>
                         <div className="flex flex-col">
-                          {tasks.filter(t => t.status === 'waiting_approval').map(task => (
+                          {/* Pokazujemy wszystkie ze statusem waiting_approval niezależnie od wybranego miesiąca na pulpicie, żeby niczego nie zgubić */}
+                          {allTasks.filter(t => t.status === 'waiting_approval').map(task => (
                             <div key={task.id} className="flex justify-between items-center py-4 border-b border-white/[0.08] last:border-0">
                               <div>
                                 <p className="font-semibold text-sm text-[#F7F4EB]">{task.title} <span className="text-xs text-[#F7F4EB]/50 font-normal">({task.profiles?.name || 'Ktoś'})</span></p>
@@ -968,7 +1032,7 @@ export default function App() {
                               </div>
                             </div>
                           ))}
-                          {tasks.filter(t => t.status === 'waiting_approval').length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-4">Brak zadań do sprawdzenia.</p>}
+                          {allTasks.filter(t => t.status === 'waiting_approval').length === 0 && <p className="text-xs text-[#F7F4EB]/50 text-center py-4">Brak zadań do sprawdzenia.</p>}
                         </div>
                       </div>
                     </div>
@@ -1301,10 +1365,16 @@ export default function App() {
                 // --- WIDOK NASTOLATKA ---
                 <>
                   {(() => {
-                    const stats = calculateStats(user.id, tasks, currentYear, currentMonth)
-                    const bountyBoardTasks = tasks.filter(t => !t.assignee_id && t.status === 'pending')
+                    // Dzieci zawsze podsumowują aktualny miesiąc na głównym pulpicie
+                    const currentMonthTasks = allTasks.filter(t => {
+                      const d = new Date(t.due_date)
+                      return d.getFullYear() === currentYear && d.getMonth() === currentMonth
+                    })
                     
-                    let displayedTeenTasks = tasks.filter(t => t.assignee_id === user.id)
+                    const stats = calculateStats(user.id, currentMonthTasks, currentYear, currentMonth)
+                    const bountyBoardTasks = allTasks.filter(t => !t.assignee_id && t.status === 'pending')
+                    
+                    let displayedTeenTasks = allTasks.filter(t => t.assignee_id === user.id)
                     
                     if (teenFilterStatus === 'evaluated') {
                        displayedTeenTasks = displayedTeenTasks.filter(t => t.reward === 0 && (t.status !== 'pending' || new Date(t.due_date) < now))
