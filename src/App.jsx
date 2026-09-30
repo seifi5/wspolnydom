@@ -804,7 +804,7 @@ export default function App() {
                           // Nowe 4 statystyki poproszone przez użytkownika
                           const totalMonthPoints = teenBaseTasks.reduce((s, t) => s + t.weight, 0)
                           const earnedPoints = teenBaseTasks.filter(t => t.status === 'approved').reduce((s, t) => s + t.weight, 0)
-                          const possibleToDatePoints = teenBaseTasks.filter(t => new Date(t.due_date) <= now).reduce((s, t) => s + t.weight, 0)
+                          const possibleToDatePoints = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) <= now).reduce((s, t) => s + t.weight, 0)
                           const remainingPoints = teenBaseTasks.filter(t => t.status === 'pending' || t.status === 'waiting_approval').reduce((s, t) => s + t.weight, 0)
 
                           const futureBreakdown = {}
