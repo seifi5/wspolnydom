@@ -101,13 +101,11 @@ export default function App() {
   const [templateDue, setTemplateDue] = useState('09:00')
   const [templateWeight, setTemplateWeight] = useState(1)
 
-  // Filtry dla przeglądu zadań
   const [filterTeen, setFilterTeen] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
   
-  // Nowe stany: Przegląd zadań - wybór miesiąca i roku
   const [overviewMonth, setOverviewMonth] = useState(currentMonth)
   const [overviewYear, setOverviewYear] = useState(currentYear)
 
@@ -120,16 +118,11 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState('')
 
-  // Opcje lat (od 2026 do przyszłego roku)
   const yearsOptions = []
   for (let y = 2026; y <= currentYear + 1; y++) {
     yearsOptions.push({ value: y, label: y.toString() })
   }
 
-  // Kalendarz dla głównego pulpitu
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
-  
   const currentMonthName = now.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }).toUpperCase()
   const currentMonthNameOnly = now.toLocaleString('pl-PL', { month: 'long' }).toUpperCase()
   
@@ -169,7 +162,6 @@ export default function App() {
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
 
-  // Reset filtra dnia przy zmianie miesiąca/roku w Przeglądzie Zadań
   useEffect(() => {
     setCalendarFilterDay(null)
   }, [overviewMonth, overviewYear])
@@ -475,7 +467,6 @@ export default function App() {
 
   const uniqueTaskTypes = Array.from(new Set(allTasks.map(t => t.title)))
 
-  // Zadania przypisane TYLKO do aktualnie wybranego miesiąca i roku w Przeglądzie
   const overviewTasks = allTasks.filter(t => {
     const d = new Date(t.due_date)
     return d.getFullYear() === overviewYear && d.getMonth() === overviewMonth
@@ -1095,32 +1086,47 @@ export default function App() {
                       </div>
 
                       <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg">
+                        
                         <div className="flex justify-between items-center mb-4">
                           <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Przegląd zadań</h2>
-                          <div className="flex gap-2 w-1/2">
-                            <CustomSelect 
-                              size="small"
-                              value={overviewMonth} 
-                              onChange={(val) => setOverviewMonth(parseInt(val))}
-                              options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
-                            />
-                            <CustomSelect 
-                              size="small"
-                              value={overviewYear} 
-                              onChange={(val) => setOverviewYear(parseInt(val))}
-                              options={yearsOptions}
-                            />
-                          </div>
+                          {calendarFilterDay !== null && (
+                            <button 
+                              onClick={() => setCalendarFilterDay(null)} 
+                              className="text-[9px] uppercase font-bold text-[#F7F4EB]/70 bg-white/[0.08] hover:bg-white/[0.12] px-3 py-1.5 rounded-full border border-white/[0.08] transition-all"
+                            >
+                              Cały miesiąc
+                            </button>
+                          )}
                         </div>
 
                         <div className="flex flex-col gap-3 mb-5">
+                          {/* Wybór miesiąca i roku na całą szerokość w osobnej linii */}
+                          <div className="flex gap-2 w-full">
+                            <div className="flex-[3]">
+                              <CustomSelect 
+                                size="small"
+                                value={overviewMonth} 
+                                onChange={(val) => setOverviewMonth(parseInt(val))}
+                                options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
+                              />
+                            </div>
+                            <div className="flex-[2]">
+                              <CustomSelect 
+                                size="small"
+                                value={overviewYear} 
+                                onChange={(val) => setOverviewYear(parseInt(val))}
+                                options={yearsOptions}
+                              />
+                            </div>
+                          </div>
+
                           <div className="grid grid-cols-2 gap-3">
                             <CustomSelect 
                               size="small"
                               value={filterTeen} 
                               onChange={setFilterTeen}
                               options={[
-                                { value: 'all', label: 'Wszyscy wykonawcy' },
+                                { value: 'all', label: 'Wszyscy' },
                                 ...teens.map(t => ({ value: t.id, label: t.name }))
                               ]}
                             />
@@ -1129,7 +1135,7 @@ export default function App() {
                               value={filterStatus} 
                               onChange={setFilterStatus}
                               options={[
-                                { value: 'all', label: 'Wszystkie statusy' },
+                                { value: 'all', label: 'Statusy' },
                                 { value: 'pending', label: 'Do zrobienia' },
                                 { value: 'waiting_approval', label: 'Czekają' },
                                 { value: 'approved', label: 'Zatwierdzone' },
@@ -1147,17 +1153,6 @@ export default function App() {
                             ]}
                           />
                         </div>
-
-                        {calendarFilterDay !== null && (
-                          <div className="mb-3 text-right">
-                            <button 
-                              onClick={() => setCalendarFilterDay(null)} 
-                              className="text-[10px] uppercase font-bold text-[#F7F4EB]/70 bg-white/[0.08] px-2.5 py-1 rounded-full border border-white/[0.08]"
-                            >
-                              Wyczyść filtr dnia
-                            </button>
-                          </div>
-                        )}
 
                         <div className="bg-white/[0.03] border border-white/[0.06] p-3 rounded-2xl mb-6">
                           <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-[#F7F4EB]/40 mb-1.5">
