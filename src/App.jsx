@@ -107,7 +107,6 @@ export default function App() {
   const [filterType, setFilterType] = useState('all') 
   const [calendarFilterDay, setCalendarFilterDay] = useState(null)
   
-  // Stany dla wybranych miesięcy w poszczególnych zakładkach
   const [dashboardMonth, setDashboardMonth] = useState(currentMonth)
   const [dashboardYear, setDashboardYear] = useState(currentYear)
   
@@ -145,7 +144,7 @@ export default function App() {
     return dayOfWeek >= 5
   }
 
-  // Kalendarz dla Kreatora (planowanie)
+  // Kalendarz dla Kreatora
   const plannerDate = new Date(currentYear, currentMonth + plannerMonthOffset, 1)
   const plannerYear = plannerDate.getFullYear()
   const plannerMonth = plannerDate.getMonth()
@@ -167,7 +166,6 @@ export default function App() {
   const tasks = allTasks.filter(t => t.due_date >= startOfThisMonth)
   const historyTasks = allTasks.filter(t => t.due_date < startOfThisMonth)
 
-  // Filtrowane zadania dla wybranego miesiąca na Pulpicie
   const dashboardTasks = allTasks.filter(t => {
     const d = new Date(t.due_date)
     return d.getFullYear() === dashboardYear && d.getMonth() === dashboardMonth
@@ -572,14 +570,21 @@ export default function App() {
                       <div>
                         <span className="font-bold text-sm text-[#F7F4EB]">{teen.name}</span>
                         <div className="text-[10px] text-[#F7F4EB]/65 mt-1">
-                          Skuteczność: <span className={stats.hasBonus ? 'text-[#F7F4EB]' : ''}>{stats.successRate}%</span> | Ekstra: {stats.extraEarned} zł
+                          Skuteczność: <span className={stats.hasBonus ? 'text-[#F7F4EB]' : ''}>{stats.successRate}%</span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="font-bold text-lg text-[#F7F4EB] block">{stats.totalPayout.toFixed(0)} zł</span>
+                        <div className="font-bold text-lg text-[#F7F4EB]">
+                          {(stats.totalPayout - stats.extraEarned).toFixed(0)} zł
+                        </div>
+                        {stats.extraEarned > 0 && (
+                          <div className="text-[9px] uppercase tracking-wider font-bold text-[#F7F4EB]/90 bg-white/[0.08] border border-white/[0.05] px-2 py-0.5 rounded-full inline-block">
+                            + {stats.extraEarned} zł ekstra
+                          </div>
+                        )}
                         <button 
                           onClick={() => setExpandedArchiveTeen(isTeenDetailsOpen ? null : teen.id)}
-                          className="text-[9px] uppercase tracking-wider font-bold bg-white/[0.06] hover:bg-white/[0.1] text-[#F7F4EB]/80 px-3 py-1.5 rounded-full mt-1.5 transition-all"
+                          className="text-[9px] uppercase tracking-wider font-bold bg-white/[0.06] hover:bg-white/[0.1] text-[#F7F4EB]/80 px-3 py-1.5 rounded-full mt-1.5 block ml-auto transition-all"
                         >
                           {isTeenDetailsOpen ? 'Ukryj listę' : 'Pokaż zadania'}
                         </button>
@@ -616,7 +621,16 @@ export default function App() {
                   <div>
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-xs text-[#F7F4EB]/65 uppercase tracking-wide">Suma zarobków</span>
-                      <span className="font-bold text-xl text-[#F7F4EB]">{stats.totalPayout.toFixed(0)} zł</span>
+                      <div className="text-right">
+                        <span className="font-bold text-xl text-[#F7F4EB] block">
+                          {(stats.totalPayout - stats.extraEarned).toFixed(0)} zł
+                        </span>
+                        {stats.extraEarned > 0 && (
+                          <div className="text-[9px] uppercase tracking-wider font-bold text-[#F7F4EB]/90 bg-white/[0.08] border border-white/[0.05] px-2 py-0.5 rounded-full inline-block mt-0.5">
+                            + {stats.extraEarned} zł ekstra
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex justify-between text-xs text-[#F7F4EB]/65 mb-2">
                       <span>Baza + Bonus</span>
@@ -765,7 +779,6 @@ export default function App() {
                   {parentTab === 'dashboard' && (
                     <div className="transition-opacity duration-300">
                       
-                      {/* Wybór miesiąca dla pulpitu głównego */}
                       <div className="flex justify-between items-center mb-4 px-2">
                         <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Pulpit dla:</h2>
                         <div className="flex gap-2 w-[65%]">
@@ -801,10 +814,12 @@ export default function App() {
                           
                           const isDetailsExpanded = expandedDetailsTeenId === teen.id
 
-                          // Nowe 4 statystyki poproszone przez użytkownika
+                          const endOfToday = new Date()
+                          endOfToday.setHours(23, 59, 59, 999)
+
                           const totalMonthPoints = teenBaseTasks.reduce((s, t) => s + t.weight, 0)
                           const earnedPoints = teenBaseTasks.filter(t => t.status === 'approved').reduce((s, t) => s + t.weight, 0)
-                          const possibleToDatePoints = teenBaseTasks.filter(t => t.status !== 'pending' || new Date(t.due_date) <= now).reduce((s, t) => s + t.weight, 0)
+                          const possibleToDatePoints = teenBaseTasks.filter(t => new Date(t.due_date) <= endOfToday).reduce((s, t) => s + t.weight, 0)
                           const remainingPoints = teenBaseTasks.filter(t => t.status === 'pending' || t.status === 'waiting_approval').reduce((s, t) => s + t.weight, 0)
 
                           const futureBreakdown = {}
@@ -841,14 +856,20 @@ export default function App() {
                                   <p className="text-xs text-[#F7F4EB]/65 mt-1">Obecna Skuteczność: <span className="font-bold text-[#F7F4EB]">{stats.successRate}%</span></p>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-2xl font-bold text-[#F7F4EB]">{stats.totalPayout.toFixed(0)} zł</div>
+                                  <div className="text-2xl font-bold text-[#F7F4EB]">
+                                    {(stats.totalPayout - stats.extraEarned).toFixed(0)} zł
+                                  </div>
+                                  {stats.extraEarned > 0 && (
+                                    <div className="text-[9px] uppercase tracking-wider font-bold text-[#F7F4EB]/90 bg-white/[0.08] border border-white/[0.05] px-2 py-0.5 rounded-full mt-1 inline-block">
+                                      + {stats.extraEarned} zł ekstra
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
                               {isExpanded && (
                                 <div className="px-6 pb-6 pt-2 border-t border-white/[0.08] flex flex-col gap-6">
                                   
-                                  {/* Tablica 4 szczegółowych wskaźników punktowych */}
                                   <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-xs">
                                       <div>
@@ -966,59 +987,11 @@ export default function App() {
                       </div>
 
                       <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
-                        
-                        <div className="flex justify-between items-center mb-5">
-                          <h2 className="font-bold text-[#F7F4EB] text-[11px] tracking-widest uppercase">Budżety na miesiąc:</h2>
-                        </div>
-                        <div className="flex gap-2 w-full mb-5">
-                            <div className="flex-[3]">
-                              <CustomSelect 
-                                size="small"
-                                value={overviewMonth} 
-                                onChange={(val) => setOverviewMonth(parseInt(val))}
-                                options={MONTH_NAMES.map((name, i) => ({ value: i, label: name }))}
-                              />
-                            </div>
-                            <div className="flex-[2]">
-                              <CustomSelect 
-                                size="small"
-                                value={overviewYear} 
-                                onChange={(val) => setOverviewYear(parseInt(val))}
-                                options={yearsOptions}
-                              />
-                            </div>
-                        </div>
-                        
-                        <div className="flex flex-col gap-5">
-                          {teens.map(teen => {
-                            const bKey = `${teen.id}-${overviewYear}-${overviewMonth}`
-                            const currentBase = budgets[bKey]?.base !== undefined ? budgets[bKey].base : teen.base_allowance
-                            const currentBonus = budgets[bKey]?.bonus !== undefined ? budgets[bKey].bonus : teen.bonus_allowance
-
-                            return (
-                              <div key={teen.id} className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">{teen.name} - Baza (zł)</label>
-                                  <input type="number" value={currentBase} onChange={e => handleBudgetChange(teen, 'base', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] uppercase tracking-wide text-[#F7F4EB]/65 mb-2 block">Bonus &gt;90%</label>
-                                  <input type="number" value={currentBonus} onChange={e => handleBudgetChange(teen, 'bonus', e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.08] text-[#F7F4EB] rounded-xl p-3 text-sm focus:outline-none focus:border-white/[0.2] transition-colors" />
-                                </div>
-                              </div>
-                            )
-                          })}
-                          <button onClick={handleSaveBudgets} className="w-full bg-white/[0.1] border border-white/[0.12] hover:bg-white/[0.15] text-[#F7F4EB] text-[11px] uppercase tracking-widest py-4 rounded-[16px] font-bold active:scale-[0.97] transition-all duration-200 mt-2">Zapisz na ten miesiąc</button>
-                        </div>
-                      </div>
-
-                      <div className="bg-white/[0.06] backdrop-blur-[20px] border border-white/[0.12] p-6 rounded-[24px] shadow-lg mb-6">
                         <h2 className="font-bold text-[#F7F4EB] mb-4 text-[11px] tracking-widest uppercase flex justify-between items-center">
                           Oczekujące na zatwierdzenie
                           <span className="bg-white/[0.1] text-[#F7F4EB] text-[10px] px-2 py-1 rounded-lg">{allTasks.filter(t => t.status === 'waiting_approval').length}</span>
                         </h2>
                         <div className="flex flex-col">
-                          {/* Pokazujemy wszystkie ze statusem waiting_approval niezależnie od wybranego miesiąca na pulpicie, żeby niczego nie zgubić */}
                           {allTasks.filter(t => t.status === 'waiting_approval').map(task => (
                             <div key={task.id} className="flex justify-between items-center py-4 border-b border-white/[0.08] last:border-0">
                               <div>
@@ -1365,7 +1338,6 @@ export default function App() {
                 // --- WIDOK NASTOLATKA ---
                 <>
                   {(() => {
-                    // Dzieci zawsze podsumowują aktualny miesiąc na głównym pulpicie
                     const currentMonthTasks = allTasks.filter(t => {
                       const d = new Date(t.due_date)
                       return d.getFullYear() === currentYear && d.getMonth() === currentMonth
@@ -1409,8 +1381,16 @@ export default function App() {
                             <h2 className="text-[10px] font-bold text-[#F7F4EB]/65 uppercase tracking-widest">Prognoza wypłaty</h2>
                             <span className="text-[9px] uppercase tracking-widest font-medium bg-white/[0.08] px-2.5 py-1 rounded-full text-[#F7F4EB]/80">Sprawdź ocenę</span>
                           </div>
-                          <div className="text-5xl font-bold text-[#F7F4EB] mb-6">
-                            {stats.totalPayout.toFixed(0)} <span className="text-2xl font-medium text-[#F7F4EB]/70">zł</span>
+                          
+                          <div className="mb-6 flex flex-col items-start">
+                            <div className="text-5xl font-bold text-[#F7F4EB]">
+                              {(stats.totalPayout - stats.extraEarned).toFixed(0)} <span className="text-2xl font-medium text-[#F7F4EB]/70">zł</span>
+                            </div>
+                            {stats.extraEarned > 0 && (
+                              <div className="text-[10px] uppercase tracking-wider font-bold text-[#F7F4EB]/90 bg-white/[0.08] border border-white/[0.05] px-3 py-1 rounded-full mt-2">
+                                + {stats.extraEarned} zł z giełdy
+                              </div>
+                            )}
                           </div>
                           
                           <div className="w-full bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
