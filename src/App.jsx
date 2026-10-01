@@ -1338,15 +1338,16 @@ export default function App() {
                 // --- WIDOK NASTOLATKA ---
                 <>
                   {(() => {
-                    const currentMonthTasks = allTasks.filter(t => {
-                      const d = new Date(t.due_date)
-                      return d.getFullYear() === currentYear && d.getMonth() === currentMonth
-                    })
-                    
-                    const stats = calculateStats(user.id, currentMonthTasks, currentYear, currentMonth)
-                    const bountyBoardTasks = allTasks.filter(t => !t.assignee_id && t.status === 'pending')
-                    
-                    let displayedTeenTasks = allTasks.filter(t => t.assignee_id === user.id)
+                  const currentMonthTasks = allTasks.filter(t => {
+  const d = new Date(t.due_date)
+  return d.getFullYear() === currentYear && d.getMonth() === currentMonth
+})
+
+const stats = calculateStats(user.id, currentMonthTasks, currentYear, currentMonth)
+
+// Zmiana: filtrujemy Giełdę i Listę Zadań WYŁĄCZNIE z zadań bieżącego miesiąca
+const bountyBoardTasks = currentMonthTasks.filter(t => !t.assignee_id && t.status === 'pending')
+let displayedTeenTasks = currentMonthTasks.filter(t => t.assignee_id === user.id)
                     
                     if (teenFilterStatus === 'evaluated') {
                        displayedTeenTasks = displayedTeenTasks.filter(t => t.reward === 0 && (t.status !== 'pending' || new Date(t.due_date) < now))
