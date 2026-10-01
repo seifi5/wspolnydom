@@ -1383,14 +1383,31 @@ export default function App() {
                           </div>
                           
                           <div className="mb-6 flex flex-col items-start">
+                            {/* Główna kwota to teraz TYLKO wypracowana baza */}
                             <div className="text-5xl font-bold text-[#F7F4EB]">
-                              {(stats.totalPayout - stats.extraEarned).toFixed(0)} <span className="text-2xl font-medium text-[#F7F4EB]/70">zł</span>
+                              {stats.currentBaseEarned.toFixed(0)} <span className="text-2xl font-medium text-[#F7F4EB]/70">zł</span>
                             </div>
-                            {stats.extraEarned > 0 && (
-                              <div className="text-[10px] uppercase tracking-wider font-bold text-[#F7F4EB]/90 bg-white/[0.08] border border-white/[0.05] px-3 py-1 rounded-full mt-2">
-                                + {stats.extraEarned} zł z giełdy
-                              </div>
-                            )}
+                            
+                            {/* Pigułki z dodatkami */}
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {/* Pigułka Bonusu (Odblokowany lub Zablokowany) */}
+                              {stats.hasBonus ? (
+                                <div className="text-[10px] uppercase tracking-wider font-bold text-[#120816] bg-[#F7F4EB] px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(247,244,235,0.3)] transition-all">
+                                  ✨ + {stats.bonusAllowance} zł BONUS
+                                </div>
+                              ) : (
+                                <div className="text-[10px] uppercase tracking-wider font-bold text-[#F7F4EB]/40 bg-white/[0.03] border border-white/[0.06] px-3 py-1.5 rounded-full transition-all">
+                                  🔒 + {stats.bonusAllowance} zł BONUS (&gt;90%)
+                                </div>
+                              )}
+                          
+                              {/* Pigułka Giełdy */}
+                              {stats.extraEarned > 0 && (
+                                <div className="text-[10px] uppercase tracking-wider font-bold text-[#F7F4EB]/90 bg-white/[0.08] border border-white/[0.05] px-3 py-1.5 rounded-full transition-all">
+                                  + {stats.extraEarned} zł GIEŁDA
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
                           <div className="w-full bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
